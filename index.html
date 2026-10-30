@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Microgreens Manager — Grow &amp; Sell Tracker</title>
+<style>
+:root{
+  --bg:#f3f7ee; --card:#ffffff; --ink:#22301f; --muted:#6d7a68;
+  --green:#2e7d32; --green2:#43a047; --deep:#1b4332; --amber:#e8a13a; --amber2:#f7c873;
+  --red:#b23a2e; --line:#dce5d2; --soft:#eaf1e0; --blue:#2f6f8f;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-size:16px; line-height:1.45;}
+header.app{background:var(--deep); color:#fff; padding:14px 16px 10px;}
+header.app .brand{font-size:24px; font-weight:800; letter-spacing:.2px;}
+header.app .brand .sprout{color:var(--amber2);}
+header.app .tag{font-size:13px; opacity:.85; margin-top:2px;}
+nav.tabs{display:flex; overflow-x:auto; background:var(--deep); padding:0 6px 10px; gap:4px; scrollbar-width:none; position:sticky; top:0; z-index:20;}
+nav.tabs::-webkit-scrollbar{display:none;}
+nav.tabs button{flex:0 0 auto; min-height:44px; padding:8px 15px; border:0; border-radius:20px; background:rgba(255,255,255,.14); color:#fff; font-size:15px; font-weight:600; cursor:pointer;}
+nav.tabs button.active{background:var(--amber); color:#3a2c05;}
+main{max-width:980px; margin:0 auto; padding:14px 12px 48px;}
+h2.view-title{margin:4px 2px 12px; font-size:21px;}
+h3{margin:18px 2px 8px; font-size:17px;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; box-shadow:0 1px 2px rgba(40,60,30,.05);}
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:12px;}
+.stat{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+.stat .k{font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700;}
+.stat .v{font-size:28px; font-weight:800; margin-top:2px;}
+.stat .s{font-size:13px; color:var(--muted); margin-top:2px;}
+.attn{border:1.5px solid var(--amber); background:#fffaf0;}
+.attn h3{margin-top:0; color:#8a5a00;}
+.attn ul{margin:6px 0 2px; padding-left:20px;}
+.attn li{margin:5px 0;}
+label{display:block; font-size:13.5px; font-weight:600; color:var(--muted); margin:10px 0 4px;}
+input,select,textarea{width:100%; min-height:44px; padding:9px 10px; font-size:16px; border:1.5px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); font-family:inherit;}
+textarea{min-height:72px;}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--amber); border-color:var(--amber);}
+.row{display:flex; gap:10px; flex-wrap:wrap;}
+.row > div{flex:1 1 140px;}
+button.btn{min-height:48px; padding:10px 18px; border:0; border-radius:9px; background:var(--green); color:#fff; font-size:16px; font-weight:700; cursor:pointer;}
+button.btn:hover{background:var(--green2);}
+button.btn.amber{background:var(--amber); color:#3a2c05;}
+button.btn.ghost{background:var(--soft); color:var(--ink); border:1px solid var(--line);}
+button.btn.danger{background:var(--red);}
+button.btn.small{min-height:42px; padding:6px 12px; font-size:14px;}
+button.btn:disabled{opacity:.5; cursor:not-allowed;}
+button.btn.tell{width:100%; background:var(--deep); font-size:17px; margin-bottom:12px;}
+table{width:100%; border-collapse:collapse; font-size:14.5px;}
+th,td{padding:8px 6px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
+th{color:var(--muted); font-size:12.5px; text-transform:uppercase; letter-spacing:.4px;}
+td.num,th.num{text-align:right;}
+.empty{color:var(--muted); text-align:center; padding:18px 8px; font-size:15px;}
+.pill{display:inline-block; padding:2px 9px; border-radius:20px; font-size:12.5px; font-weight:700; background:var(--soft); color:var(--ink);}
+.pill.germ{background:#e8e2f2; color:#4a3a72;}
+.pill.light{background:#fdf3d7; color:#8a5a00;}
+.pill.ready{background:#dff2df; color:var(--green);}
+.pill.done{background:#e8e8e8; color:#666;}
+.pill.red{background:#f8e3e0; color:var(--red);}
+.pill.low{background:#f8e3e0; color:var(--red);}
+.mut{color:var(--muted);} .small{font-size:13px;}
+.del{background:none; border:0; color:var(--red); font-size:18px; cursor:pointer; min-width:40px; min-height:40px;}
+.tray-actions{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+.tray-actions button{min-height:40px; padding:6px 10px; font-size:13.5px; border-radius:8px; border:1px solid var(--line); background:var(--soft); color:var(--ink); font-weight:600; cursor:pointer;}
+.tray-actions button.primary{background:var(--green); color:#fff; border-color:var(--green);}
+.tray-actions button.warn{background:#fdf3d7;}
+#toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px); background:#22301f; color:#fff; padding:11px 18px; border-radius:24px; font-size:15px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s; max-width:92vw; text-align:center; z-index:99995;}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+#toast.err{background:var(--red);}
+.sheet-wrap{position:fixed; inset:0; background:rgba(25,35,20,.55); display:none; align-items:flex-end; justify-content:center; z-index:9990;}
+.sheet-wrap.open{display:flex;}
+.sheet{background:#fff; border-radius:16px 16px 0 0; width:100%; max-width:640px; max-height:92vh; display:flex; flex-direction:column;}
+.sheet-head{padding:16px 18px 6px;}
+.sheet-head h3{margin:0; font-size:19px;}
+.sheet-body{padding:4px 18px 14px; overflow-y:auto;}
+.sheet-bar{position:sticky; bottom:0; background:#fff; border-top:1.5px solid var(--line); padding:12px 18px calc(12px + env(safe-area-inset-bottom)); display:flex; gap:10px;}
+.sheet-bar button{flex:1;}
+.confirm-line{font-size:16.5px; margin:8px 0; line-height:1.5;}
+.help-sec p{margin:6px 0;}
+.help-sec li{margin:4px 0;}
+details.help-item{border-bottom:1px solid var(--line); padding:8px 0;}
+details.help-item summary{font-weight:700; cursor:pointer; min-height:32px;}
+footer.app{max-width:980px; margin:0 auto; padding:0 12px 30px; color:var(--muted); font-size:13px; text-align:center;}
+#printArea{display:none;}
+@media print{
+  header.app, nav.tabs, main, footer.app, #toast, .sheet-wrap{display:none !important;}
+  #printArea{display:block; font-size:14px;}
+  #printArea h1{font-size:20px;}
+  #printArea table{font-size:13px;}
+}
+@media (max-width:480px){
+  .stat .v{font-size:24px;}
+  th,td{padding:7px 4px; font-size:13.5px;}
+  header.app .brand{font-size:21px;}
+}
+/* supplies guide */
+.sup-chips{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 4px;}
+.sup-chip{min-height:44px; padding:8px 14px; border-radius:20px; border:1.5px solid var(--line); background:#fff; font-size:14.5px; font-weight:600; cursor:pointer; color:var(--ink);}
+.sup-chip.active{background:var(--deep); color:#fff; border-color:var(--deep);}
+.sup-item{border-bottom:1px solid var(--line); padding:10px 0;}
+.sup-item:last-of-type{border-bottom:0;}
+.sup-check{display:flex; gap:10px; align-items:flex-start; cursor:pointer; margin:0; font-size:15px; font-weight:400; color:var(--ink);}
+.sup-check input{width:24px; height:24px; min-width:24px; min-height:24px; margin-top:1px; cursor:pointer; accent-color:var(--green);}
+.sup-item.got .sup-name{color:var(--muted); text-decoration:line-through;}
+.sup-tips{background:var(--soft); border-radius:9px; padding:10px 12px; margin-top:12px; font-size:14px;}
+.sup-sup{display:flex; gap:10px; justify-content:space-between; align-items:center; border-top:1px solid var(--line); padding:10px 0;}
+.sup-sup:first-of-type{border-top:0;}
+a.sup-buy{display:inline-flex; align-items:center; min-height:44px; padding:8px 16px; border:1.5px solid var(--green); border-radius:9px; color:var(--green); font-weight:700; font-size:15px; text-decoration:none; background:#fff; white-space:nowrap;}
+a.sup-buy:hover{background:var(--soft);}
+/* terms gate (ww-legal pattern) */
+.ww-legal-overlay{position:fixed;inset:0;z-index:99990;background:rgba(10,14,10,.72);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
+.ww-legal-card{background:#fff;color:#17202a;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px 20px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.35);font-family:inherit}
+.ww-legal-card h2{margin:0 0 4px;font-size:22px}
+.ww-legal-card h3{margin:16px 0 6px}
+.ww-legal-sum{font-size:16px;line-height:1.45;margin:12px 0}
+.ww-legal-sum p{margin:6px 0;font-weight:600}
+.ww-legal-note{font-size:13px;color:#445; margin:10px 0}
+.ww-legal-btn{display:block;width:100%;min-height:48px;margin:10px 0;padding:12px 14px;font-size:16px;border-radius:10px;border:1px solid #9db2c3;background:#eef4f8;color:#17202a;cursor:pointer;box-sizing:border-box}
+.ww-legal-agree{background:#17603a;border-color:#17603a;color:#fff;font-weight:700}
+.ww-legal-agree[disabled]{opacity:.45;cursor:not-allowed}
+.ww-legal-page{position:fixed;inset:0;z-index:99980;background:#fff;color:#17202a;overflow:auto;padding:18px 16px 40px;box-sizing:border-box}
+.ww-legal-page .ww-legal-inner{max-width:680px;margin:0 auto}
+.ww-legal-page h2{font-size:21px}.ww-legal-page h3{font-size:17px;margin-top:18px}.ww-legal-page p,.ww-legal-page li{font-size:14.5px;line-height:1.55}
+.ww-legal-close{min-height:48px;padding:10px 18px;font-size:15px;border-radius:10px;border:1px solid #9db2c3;background:#eef4f8;cursor:pointer}
+.ww-legal-open-btn{min-height:48px}
+.ww-legal-check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:15px;line-height:1.4;cursor:pointer;text-align:left}
+.ww-legal-check input{width:22px;height:22px;min-width:22px;margin-top:1px;cursor:pointer}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="brand">🌱 Microgreens <span class="sprout">Manager</span></div>
+  <div class="tag">Sow it, grow it, sell it — trays, harvests, customers &amp; money in one place</div>
+</header>
+<nav class="tabs" id="tabbar"></nav>
+<main id="view"></main>
+<div id="printArea"></div>
+
+<div class="sheet-wrap" id="sheetWrap">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-head"><h3 id="sheetTitle">Form</h3></div>
+    <div class="sheet-body" id="sheetBody"></div>
+    <div class="sheet-bar" id="sheetBar"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<footer class="app">Microgreens Manager v1.1 · Runs 100% offline. Your data never leaves this device — it lives in your browser's storage.</footer>
+
+<div id="wwLegalOverlay" class="ww-legal-overlay" hidden>
+  <div class="ww-legal-card" role="dialog" aria-modal="true" aria-labelledby="wwLegalTitle">
+    <h2>Microgreens Manager</h2>
+    <h3 id="wwLegalTitle" style="margin-top:2px">Terms of Use</h3>
+    <div class="ww-legal-sum">
+      <p>Your data stays on your device.</p>
+      <p>Growth timelines are typical ranges, not guarantees.</p>
+      <p>You're responsible for checking outputs before you rely on them.</p>
+    </div>
+    <p class="ww-legal-note">The full Terms and Disclaimer are one tap away, now and any time in More → Legal.</p>
+    <button type="button" class="ww-legal-btn" id="wwLegalReadTerms">Read the full Terms</button>
+    <label class="ww-legal-check" for="wwLegalCheck"><input type="checkbox" id="wwLegalCheck"><span>I have read and I agree to the Terms of Use</span></label>
+    <button type="button" class="ww-legal-btn ww-legal-agree" id="wwLegalAgree" disabled>I Agree</button>
+  </div>
+</div>
+<div id="wwLegalReader" class="ww-legal-page" hidden>
+  <div class="ww-legal-inner">
+    <button type="button" class="ww-legal-close" id="wwLegalReaderBack">← Back</button>
+    <div id="wwLegalReaderBody"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================================================================
+   Microgreens Manager v1.1 — grow & sell tracker for small
+   microgreens growers. Single-file app. All data in localStorage
+   under one key (microgreens_v1). Offline; no accounts, no server.
+   ================================================================ */
+var APP_NAME = 'Microgreens Manager';
+var APP_VERSION = '1.1';
+var TERMS_VERSION = '1.0';
+var LS_KEY = 'microgreens_v1';
+var LS_TERMS_KEY = 'microgreens_v1_terms';
+var SELLER_NAME = 'White Wolf Apps';
+var SELLER_EMAIL = 'whitewolfbackoffice@gmail.com';
+
+/* Variety library — typical published grower ranges (days).
+   germ = sow → move to light; light = days finishing in light;
+   total = typical sow → harvest. seedG = typical seed per 10×20 tray. */
+var VARIETIES = [
+  {id:'radish',    name:'Radish',     germ:3, light:4,  total:8,  seedG:25},
+  {id:'broccoli',  name:'Broccoli',   germ:4, light:5,  total:10, seedG:12},
+  {id:'arugula',   name:'Arugula',    germ:4, light:6,  total:11, seedG:8},
+  {id:'sunflower', name:'Sunflower',  germ:4, light:6,  total:11, seedG:30},
+  {id:'pea',       name:'Pea Shoots', germ:5, light:6,  total:13, seedG:120},
+  {id:'kale',      name:'Kale',       germ:4, light:6,  total:11, seedG:10},
+  {id:'basil',     name:'Basil',      germ:6, light:9,  total:16, seedG:5},
+  {id:'cilantro',  name:'Cilantro',   germ:8, light:10, total:19, seedG:15},
+  {id:'amaranth',  name:'Amaranth',   germ:3, light:5,  total:9,  seedG:6},
+  {id:'mustard',   name:'Mustard',    germ:3, light:4,  total:8,  seedG:10}
+];
+function varietyById(id){ for (var i=0;i<VARIETIES.length;i++) if (VARIETIES[i].id===id) return VARIETIES[i]; return null; }
+function varietyName(id){ var v = varietyById(id); return v ? v.name : id; }
+
+var CUSTOMER_TYPES = ['Restaurant','Farmers Market','Direct','Wholesale','Other'];
+var MONEY_CATS = ['Sale','Seed','Trays & Supplies','Packaging','Market Fees','Other Expense','Other Income'];
+
+/* ---------- state ---------- */
+function blankState(){
+  return { v:1, farmName:'', setupDone:false, demo:false, seq:0,
+    trays:[], harvests:[], sales:[], customers:[], money:[], seeds:[], notes:[], shop:[] };
+}
+var state = blankState();
+function uid(p){ state.seq = (state.seq||0)+1; return (p||'r') + Date.now().toString(36) + state.seq.toString(36); }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  var raw = null;
+  try{ raw = localStorage.getItem(LS_KEY); }catch(e){}
+  if (!raw) { state = blankState(); return; }
+  try {
+    var s = JSON.parse(raw);
+    if (!s || typeof s !== 'object') throw new Error('bad');
+    var b = blankState();
+    for (var k in b) if (s[k] === undefined) s[k] = b[k];
+    state = s;
+  } catch(e){
+    try{ localStorage.setItem(LS_KEY+'_corrupt_backup', raw); }catch(_){}
+    state = blankState();
+  }
+}
+/* cross-tab: another tab saved → reload + re-render (§10 single source) */
+window.addEventListener('storage', function(e){
+  if (e.key === LS_KEY) { load(); render(); }
+});
+
+/* ---------- date & format helpers ---------- */
+function pad2(n){ return (n<10?'0':'')+n; }
+function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function parseDate(s){ if(!s) return null; var p=String(s).split('-'); if(p.length!==3) return null; return new Date(+p[0], +p[1]-1, +p[2]); }
+function addDaysStr(s, n){ var d=parseDate(s); if(!d) return s; d.setDate(d.getDate()+n); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function daysBetween(a, b){ var da=parseDate(a), db=parseDate(b); if(!da||!db) return 0; return Math.round((db-da)/86400000); }
+function fmtDate(s){ var d=parseDate(s); if(!d) return '—'; return d.toLocaleDateString('en-US',{month:'short', day:'numeric'}); }
+function money(n){ n = Number(n)||0; return '$' + n.toFixed(2); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function num(v, dflt){ var n = parseFloat(v); return isFinite(n) ? n : (dflt||0); }
+function weekStartStr(){ var d=new Date(); var day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function monthStartStr(){ var d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-01'; }
+function fmtQty(qty, unit){
+  qty = Number(qty)||0;
+  if (unit === 'oz' && qty >= 16) return (Math.round(qty/16*100)/100) + ' lb (' + qty + ' oz)';
+  return qty + ' ' + unit;
+}
+
+/* ---------- trays: stage derivation ---------- */
+function trayStage(t){
+  if (t.status === 'harvested') return 'Harvested';
+  if (t.status === 'lost') return 'Lost';
+  if (t.readyFlag) return 'Ready';
+  var v = varietyById(t.variety); if (!v) return 'Germination';
+  if (t.lightDate){
+    return daysBetween(t.lightDate, todayStr()) >= v.light ? 'Ready' : 'In Light';
+  }
+  return 'Germination';
+}
+function trayDueLight(t){
+  var v = varietyById(t.variety); if (!v || t.lightDate || t.status!=='active') return null;
+  return addDaysStr(t.sowDate, v.germ);
+}
+function trayDueHarvest(t){
+  var v = varietyById(t.variety); if (!v || t.status!=='active') return null;
+  if (t.lightDate) return addDaysStr(t.lightDate, v.light);
+  return addDaysStr(t.sowDate, v.total);
+}
+function activeTrays(){ return state.trays.filter(function(t){ return t.status==='active'; }); }
+
+/* ---------- inventory: computed from harvests − sales (single source) ---------- */
+function invKey(variety, form, unit){ return variety + '|' + form + '|' + unit; }
+function inventory(){
+  var inv = {};
+  state.harvests.forEach(function(h){
+    var k = invKey(h.variety, h.form, h.unit);
+    if (!inv[k]) inv[k] = {variety:h.variety, form:h.form, unit:h.unit, qty:0};
+    inv[k].qty += Number(h.qty)||0;
+  });
+  state.sales.forEach(function(s){
+    var k = invKey(s.variety, s.form, s.unit);
+    if (!inv[k]) inv[k] = {variety:s.variety, form:s.form, unit:s.unit, qty:0};
+    /* A bench sale supplies its own tray: the linked trays count as
+       harvested supply, then the sale consumes them. Net stock effect
+       is zero and deleting the sale frees the trays again. */
+    if (s.trayIds && s.trayIds.length) inv[k].qty += s.trayIds.length;
+    inv[k].qty -= Number(s.qty)||0;
+  });
+  return inv;
+}
+function stockOf(variety, form, unit){
+  var inv = inventory(); var e = inv[invKey(variety, form, unit)];
+  return e ? e.qty : 0;
+}
+
+/* ---------- money: derived totals (sales post once, via refId) ---------- */
+function moneyInRange(fromStr, toStr){
+  var inc = 0, exp = 0;
+  state.money.forEach(function(m){
+    if (m.date < fromStr || m.date > toStr) return;
+    if (m.kind === 'income') inc += Number(m.amount)||0; else exp += Number(m.amount)||0;
+  });
+  return {income:inc, expense:exp, net:inc-exp};
+}
+
+/* ---------- toast ---------- */
+var toastTimer = null;
+function toast(msg, isErr){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = isErr ? 'show err' : 'show';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.className=''; }, 3200);
+}
+function savedToast(what){ toast('Saved ✓ — ' + what); }
+
+/* ---------- sheet (form) system with sticky save bar ---------- */
+var sheetCleanup = null;
+function openSheet(title, bodyHTML, barButtons, onOpen){
+  document.getElementById('sheetTitle').textContent = title;
+  document.getElementById('sheetBody').innerHTML = bodyHTML;
+  var bar = document.getElementById('sheetBar');
+  bar.innerHTML = '';
+  barButtons.forEach(function(b){
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn ' + (b.cls||''); btn.textContent = b.label;
+    btn.id = b.id || '';
+    btn.addEventListener('click', b.onClick);
+    bar.appendChild(btn);
+  });
+  document.getElementById('sheetWrap').classList.add('open');
+  if (onOpen) onOpen();
+}
+function closeSheet(){
+  document.getElementById('sheetWrap').classList.remove('open');
+  if (sheetCleanup) { try{ sheetCleanup(); }catch(e){} sheetCleanup = null; }
+}
+function val(id){ var el = document.getElementById(id); return el ? el.value : ''; }
+function confirmSheet(title, linesHTML, okLabel, onOk){
+  openSheet(title, '<div class="confirm-line">' + linesHTML + '</div>', [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:okLabel, cls:'amber', onClick:function(){ closeSheet(); onOk(); }}
+  ]);
+}
+
+/* ---------- navigation ---------- */
+var TABS = [
+  {id:'today', label:'🌞 Today'},
+  {id:'trays', label:'🌱 Trays'},
+  {id:'sales', label:'🧺 Sales'},
+  {id:'money', label:'💵 Money'},
+  {id:'more',  label:'☰ More'}
+];
+var currentTab = 'today';
+function buildTabs(){
+  var nav = document.getElementById('tabbar');
+  nav.innerHTML = '';
+  TABS.forEach(function(t){
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = t.label; b.dataset.tab = t.id;
+    if (t.id === currentTab) b.className = 'active';
+    b.addEventListener('click', function(){ currentTab = t.id; render(); });
+    nav.appendChild(b);
+  });
+}
+function render(){
+  buildTabs();
+  var v = document.getElementById('view');
+  if (currentTab === 'today') v.innerHTML = viewToday();
+  else if (currentTab === 'trays') v.innerHTML = viewTrays();
+  else if (currentTab === 'sales') v.innerHTML = viewSales();
+  else if (currentTab === 'money') v.innerHTML = viewMoney();
+  else if (currentTab === 'supplies') v.innerHTML = viewSupplies();
+  else v.innerHTML = viewMore();
+  wireView(v);
+  if (currentTab === 'supplies') wireSupplies(v);
+  if (currentTab === 'more'){
+    var line = document.getElementById('termsRecordLine');
+    if (line) line.textContent = termsRecordText();
+  }
+}
+
+/* ---------- shared bits ---------- */
+function tellButtonHTML(){
+  return '<button type="button" class="btn tell" data-act="tell">🎤 Tell ' + APP_NAME + '</button>' +
+    '<p class="small mut" style="margin:-6px 2px 12px;">Say it in plain words — “sowed 6 trays of radish”, “sold 2 live trays of broccoli to The Corner Bistro for $30”. ' +
+    'Tell runs on this device (it is not a cloud AI) and always shows you what it heard before saving. Voice needs a supported browser on the hosted/Play version; typing always works.</p>';
+}
+function needsAttention(){
+  var items = [];
+  var today = todayStr();
+  activeTrays().forEach(function(t){
+    var dl = trayDueLight(t), dh = trayDueHarvest(t), st = trayStage(t);
+    if (dl && today >= dl && st === 'Germination')
+      items.push({trayId:t.id, kind:'light', text:'Tray ' + t.code + ' (' + varietyName(t.variety) + ') is due to move to light — sowed ' + fmtDate(t.sowDate) + '.'});
+    if (dh && st === 'Ready')
+      items.push({trayId:t.id, kind:'harvest', text:'Tray ' + t.code + ' (' + varietyName(t.variety) + ') is ready to harvest.'});
+    else if (dh && today > addDaysStr(dh, 2) && st !== 'Ready')
+      items.push({trayId:t.id, kind:'overdue', text:'Tray ' + t.code + ' (' + varietyName(t.variety) + ') is past its typical harvest window (was due ' + fmtDate(dh) + ') — check it today.'});
+  });
+  state.seeds.forEach(function(s){
+    if ((Number(s.onHand)||0) <= (Number(s.lowAt)||0))
+      items.push({trayId:null, kind:'seed', text:'Seed running low: ' + varietyName(s.variety) + ' — ' + (Number(s.onHand)||0) + ' g on hand.'});
+  });
+  return items;
+}
+
+/* ---------- Today ---------- */
+function viewToday(){
+  var h = '<h2 class="view-title">' + esc(state.farmName || 'Today') + '</h2>';
+  if (!state.setupDone && state.trays.length === 0 && !state.demo){
+    h += '<div class="card"><h3 style="margin-top:0;">👋 Welcome to Microgreens Manager</h3>' +
+      '<p>Track trays from sowing to sale: what is growing, what is ready, who bought it, and what you made. Everything stays on this device — no account, no internet needed.</p>' +
+      '<label for="setupName">Your farm or business name (optional)</label>' +
+      '<input type="text" id="setupName" placeholder="e.g. Sunny Corner Greens">' +
+      '<div class="row" style="margin-top:12px;"><div><button type="button" class="btn" data-act="setup-start">Start blank</button></div>' +
+      '<div><button type="button" class="btn amber" data-act="setup-demo">See it with sample data</button></div></div>' +
+      '<p class="small mut">Sample data is made-up, so you can see how everything works. Clear it any time in More.</p></div>';
+  }
+  var attn = needsAttention();
+  if (attn.length){
+    h += '<div class="card attn"><h3>⚠️ Needs attention</h3><ul>';
+    attn.forEach(function(a){ h += '<li>' + esc(a.text) + (a.kind === 'seed' ? ' <button type="button" data-act="goto-seed-supplies" style="background:none; border:0; padding:2px 4px; color:var(--green); font-weight:700; font-size:13.5px; cursor:pointer;">Where to buy seed →</button>' : '') + '</li>'; });
+    h += '</ul></div>';
+  }
+  h += tellButtonHTML();
+  var act = activeTrays();
+  var growing = act.length;
+  var ready = act.filter(function(t){ return trayStage(t) === 'Ready'; }).length;
+  var inLight = act.filter(function(t){ return trayStage(t) === 'In Light'; }).length;
+  var wk = moneyInRange(weekStartStr(), todayStr());
+  var inv = inventory(); var stockKinds = 0, stockUnits = 0;
+  Object.keys(inv).forEach(function(k){ if (inv[k].qty > 0){ stockKinds++; } });
+  h += '<div class="grid">' +
+    '<div class="stat"><div class="k">Trays growing</div><div class="v">' + growing + '</div><div class="s">' + inLight + ' in light now</div></div>' +
+    '<div class="stat"><div class="k">Ready to harvest</div><div class="v">' + ready + '</div><div class="s">check Trays to cut</div></div>' +
+    '<div class="stat"><div class="k">Harvested, unsold</div><div class="v">' + stockKinds + '</div><div class="s">product kinds in stock</div></div>' +
+    '<div class="stat"><div class="k">Sales this week</div><div class="v">' + money(wk.income) + '</div><div class="s">net ' + money(wk.net) + ' after expenses</div></div>' +
+    '</div>';
+  h += '<div class="row">' +
+    '<div><button type="button" class="btn" data-act="sow">➕ Sow a tray</button></div>' +
+    '<div><button type="button" class="btn" data-act="sale">🧺 Log a sale</button></div>' +
+    '<div><button type="button" class="btn ghost" data-act="goto-money">💵 Money</button></div>' +
+    '<div><button type="button" class="btn ghost" data-act="goto-supplies">🛒 Supplies guide</button></div></div>';
+  var upcoming = act.slice().sort(function(a,b){ return (trayDueHarvest(a)||'9999') < (trayDueHarvest(b)||'9999') ? -1 : 1; }).slice(0,5);
+  if (upcoming.length){
+    h += '<h3>Coming up</h3><div class="card"><table><tr><th>Tray</th><th>Stage</th><th class="num">Harvest due</th></tr>';
+    upcoming.forEach(function(t){
+      h += '<tr><td>' + esc(t.code) + ' · ' + esc(varietyName(t.variety)) + '</td><td>' + stagePill(trayStage(t)) + '</td><td class="num">' + fmtDate(trayDueHarvest(t)) + '</td></tr>';
+    });
+    h += '</table></div>';
+  }
+  h += howItWorksHTML();
+  return h;
+}
+function stagePill(st){
+  var cls = st==='Germination' ? 'germ' : st==='In Light' ? 'light' : st==='Ready' ? 'ready' : 'done';
+  return '<span class="pill ' + cls + '">' + st + '</span>';
+}
+function howItWorksHTML(){
+  return '<div class="card"><h3 style="margin-top:0;">How this page works</h3>' +
+    '<p class="small">Needs Attention sits at the top — trays due to move into light, trays ready to harvest, and low seed show up there on their own, worked out from the dates you enter. ' +
+    'The four big numbers are today at a glance. Sow trays in <b>Trays</b>, log harvests and sales in <b>Sales</b>, and watch the money in <b>Money</b>. ' +
+    'Growth stages and due dates come from typical published day-ranges for each variety — they are planning aids, and your eyes on the tray always win.</p></div>';
+}
+
+/* ---------- Trays ---------- */
+function viewTrays(){
+  var h = '<h2 class="view-title">Trays</h2>';
+  h += tellButtonHTML();
+  h += '<div class="row" style="margin-bottom:12px;"><div><button type="button" class="btn" data-act="sow">➕ Sow a tray</button></div>' +
+       '<div><button type="button" class="btn ghost" data-act="sow-batch">➕ Sow a batch</button></div></div>';
+  var act = activeTrays().slice().sort(function(a,b){ return a.sowDate < b.sowDate ? -1 : 1; });
+  var done = state.trays.filter(function(t){ return t.status!=='active'; }).slice().sort(function(a,b){ return a.sowDate < b.sowDate ? 1 : -1; }).slice(0,10);
+  if (!act.length && !done.length) h += '<div class="card empty">No trays yet. Sow your first tray to start the clock.</div>';
+  act.forEach(function(t){ h += trayCard(t); });
+  if (done.length){
+    h += '<h3>Finished trays</h3>';
+    done.forEach(function(t){ h += trayCard(t); });
+  }
+  h += seedCardHTML();
+  return h;
+}
+function trayCard(t){
+  var st = trayStage(t);
+  var v = varietyById(t.variety);
+  var age = daysBetween(t.sowDate, todayStr());
+  var h = '<div class="card"><div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+    '<div><b>Tray ' + esc(t.code) + ' · ' + esc(varietyName(t.variety)) + '</b><br>' +
+    '<span class="small mut">Sowed ' + fmtDate(t.sowDate) + ' · day ' + Math.max(age,0) + (t.seedG ? ' · ' + t.seedG + ' g seed' : '') + (t.lightDate ? ' · to light ' + fmtDate(t.lightDate) : '') + '</span>' +
+    (t.note ? '<br><span class="small">' + esc(t.note) + '</span>' : '') + '</div>' +
+    '<div>' + stagePill(st) + '</div></div>';
+  if (t.status === 'active'){
+    h += '<div class="tray-actions">';
+    if (!t.lightDate) h += '<button type="button" data-act="tray-light" data-id="' + t.id + '">☀️ Move to light</button>';
+    if (st !== 'Ready') h += '<button type="button" data-act="tray-ready" data-id="' + t.id + '">✓ Mark ready</button>';
+    h += '<button type="button" class="primary" data-act="tray-harvest" data-id="' + t.id + '">✂️ Harvest</button>';
+    h += '<button type="button" data-act="tray-edit" data-id="' + t.id + '">Edit</button>';
+    h += '<button type="button" class="warn" data-act="tray-lost" data-id="' + t.id + '">Dump / lost</button>';
+    h += '</div>';
+  } else {
+    h += '<div class="tray-actions"><button type="button" data-act="tray-edit" data-id="' + t.id + '">Edit</button>' +
+      '<button type="button" data-act="tray-delete" data-id="' + t.id + '">Delete</button></div>';
+  }
+  if (v) h += '<p class="small mut" style="margin:8px 0 0;">Typical: light at day ' + v.germ + ', harvest around day ' + v.total + '.</p>';
+  return h + '</div>';
+}
+function seedCardHTML(){
+  var h = '<h3>Seed stock</h3><div class="card">';
+  if (!state.seeds.length) h += '<p class="empty">No seed tracked yet.</p>';
+  else {
+    h += '<table><tr><th>Variety</th><th class="num">On hand</th><th class="num">Low at</th><th></th></tr>';
+    state.seeds.forEach(function(s){
+      var low = (Number(s.onHand)||0) <= (Number(s.lowAt)||0);
+      h += '<tr><td>' + esc(varietyName(s.variety)) + (low ? ' <span class="pill low">Low</span> <button type="button" data-act="goto-seed-supplies" style="background:none; border:0; padding:2px 4px; color:var(--green); font-weight:700; font-size:13px; cursor:pointer;">Where to buy →</button>' : '') + '</td>' +
+        '<td class="num">' + (Number(s.onHand)||0) + ' g</td><td class="num">' + (Number(s.lowAt)||0) + ' g</td>' +
+        '<td class="num"><button type="button" class="del" data-act="seed-del" data-id="' + s.id + '" aria-label="Delete seed row">🗑</button></td></tr>';
+    });
+    h += '</table>';
+  }
+  h += '<button type="button" class="btn small ghost" data-act="seed-add" style="margin-top:10px;">➕ Add / update seed</button></div>';
+  return h;
+}
+
+/* ---------- Sales ---------- */
+function customerName(id){
+  for (var i=0;i<state.customers.length;i++) if (state.customers[i].id===id) return state.customers[i].name;
+  return '—';
+}
+function viewSales(){
+  var h = '<h2 class="view-title">Harvests &amp; Sales</h2>';
+  h += tellButtonHTML();
+  h += '<div class="row" style="margin-bottom:12px;"><div><button type="button" class="btn" data-act="harvest">✂️ Log a harvest</button></div>' +
+       '<div><button type="button" class="btn amber" data-act="sale">🧺 Log a sale</button></div></div>';
+  var inv = inventory();
+  var keys = Object.keys(inv).filter(function(k){ return inv[k].qty > 0; });
+  h += '<h3>Harvested &amp; ready to sell</h3><div class="card">';
+  if (!keys.length) h += '<p class="empty">Nothing in stock. Harvest a tray and it lands here.</p>';
+  else {
+    h += '<table><tr><th>Product</th><th class="num">On hand</th></tr>';
+    keys.forEach(function(k){ var e = inv[k]; h += '<tr><td>' + esc(varietyName(e.variety)) + ' — ' + (e.form==='live' ? 'Live tray' : 'Cut') + '</td><td class="num">' + fmtQty(e.qty, e.unit) + '</td></tr>'; });
+    h += '</table>';
+  }
+  h += '</div>';
+  var sales = state.sales.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,20);
+  h += '<h3>Recent sales</h3><div class="card">';
+  if (!sales.length) h += '<p class="empty">No sales logged yet.</p>';
+  else {
+    h += '<table><tr><th>Date</th><th>Sale</th><th class="num">Total</th><th></th></tr>';
+    sales.forEach(function(s){
+      h += '<tr><td>' + fmtDate(s.date) + '</td><td>' + fmtQty(s.qty, s.unit) + ' ' + esc(varietyName(s.variety)) + ' (' + (s.form==='live'?'live tray':'cut') + ') → ' + esc(customerName(s.customerId)) + (s.trayIds && s.trayIds.length ? ' <span class="pill">bench · Tray ' + esc((s.trayCodes||[]).join(', ')) + '</span>' : '') + (s.note ? '<br><span class="small mut">' + esc(s.note) + '</span>' : '') + '</td>' +
+        '<td class="num">' + money(s.total) + '</td>' +
+        '<td class="num"><button type="button" class="del" data-act="sale-edit" data-id="' + s.id + '" aria-label="Edit sale">✏️</button>' +
+        '<button type="button" class="del" data-act="sale-del" data-id="' + s.id + '" aria-label="Delete sale">🗑</button></td></tr>';
+    });
+    h += '</table><p class="small mut">Deleting a sale returns the product to stock and removes its Money entry — the books stay in step.</p>';
+  }
+  h += '</div>';
+  var harv = state.harvests.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,10);
+  if (harv.length){
+    h += '<h3>Recent harvests</h3><div class="card"><table><tr><th>Date</th><th>Harvest</th><th></th></tr>';
+    harv.forEach(function(x){
+      h += '<tr><td>' + fmtDate(x.date) + '</td><td>' + fmtQty(x.qty, x.unit) + ' ' + esc(varietyName(x.variety)) + ' (' + (x.form==='live'?'live tray':'cut') + ')</td>' +
+        '<td class="num"><button type="button" class="del" data-act="harvest-del" data-id="' + x.id + '" aria-label="Delete harvest">🗑</button></td></tr>';
+    });
+    h += '</table></div>';
+  }
+  h += customersCardHTML();
+  return h;
+}
+function customersCardHTML(){
+  var h = '<h3>Customers</h3><div class="card">';
+  if (!state.customers.length) h += '<p class="empty">No customers yet — add your first buyer.</p>';
+  else {
+    h += '<table><tr><th>Name</th><th>Type</th><th>Contact</th><th></th></tr>';
+    state.customers.forEach(function(c){
+      h += '<tr><td><b>' + esc(c.name) + '</b>' + (c.notes ? '<br><span class="small mut">' + esc(c.notes) + '</span>' : '') + '</td><td>' + esc(c.type) + '</td><td>' + esc(c.contact||'—') + '</td>' +
+        '<td class="num"><button type="button" class="del" data-act="cust-edit" data-id="' + c.id + '" aria-label="Edit customer">✏️</button>' +
+        '<button type="button" class="del" data-act="cust-del" data-id="' + c.id + '" aria-label="Delete customer">🗑</button></td></tr>';
+    });
+    h += '</table>';
+  }
+  h += '<button type="button" class="btn small" data-act="cust-add" style="margin-top:10px;">➕ Add a customer</button></div>';
+  return h;
+}
+
+/* ---------- Forms & actions ---------- */
+function findTray(id){ for (var i=0;i<state.trays.length;i++) if (state.trays[i].id===id) return state.trays[i]; return null; }
+function deleteSaleCascade(saleId){
+  var sale = null;
+  for (var i=0;i<state.sales.length;i++) if (state.sales[i].id===saleId) sale = state.sales[i];
+  if (!sale) return;
+  (sale.trayIds||[]).forEach(function(tid){ var t = findTray(tid); if (t && t.status==='harvested') t.status = 'active'; });
+  state.sales = state.sales.filter(function(x){ return x.id !== saleId; });
+  state.money = state.money.filter(function(m){ return m.refId !== saleId; });
+}
+
+/* recordSaleFromParts — the ONE place a sale is written. Every path
+   (form, Tell direct) funnels through here so the money entry posts
+   exactly once, with a plain-words breakdown note. A bench sale
+   (readyTrayIds set) records the sale against the tray itself: the
+   tray is marked harvested and the sale carries its tray link — no
+   separate harvest record is created for it. */
+function recordSaleFromParts(parts){
+  var sale = {id:uid('s'), customerId:parts.customerId, variety:parts.variety, form:parts.form, unit:parts.unit,
+    qty:parts.qty, pricePer:parts.pricePer, total:parts.total, date:parts.date, note:parts.note||'',
+    trayIds:(parts.readyTrayIds||[]).slice(), trayCodes:[]};
+  (parts.readyTrayIds||[]).forEach(function(tid){
+    var t = findTray(tid);
+    if (t){ sale.trayCodes.push(t.code); if (t.status === 'active') t.status = 'harvested'; }
+  });
+  state.sales.push(sale);
+  var breakdown = fmtQty(parts.qty, parts.unit) + ' ' + varietyName(parts.variety) + ' (' + (parts.form==='live' ? 'live tray' : 'cut') + ') @ ' + money(parts.pricePer) + ' → ' + customerName(parts.customerId);
+  if (sale.trayCodes.length) breakdown += ' · from bench Tray ' + sale.trayCodes.join(', Tray ');
+  state.money.push({id:uid('m'), date:parts.date, kind:'income', category:'Sale', amount:parts.total, note:breakdown, refId:sale.id, auto:true});
+  return sale;
+}
+/* submitSaleDirect — Tell's confirm-card path for a NON-brokered sale
+   (selling from harvested stock): records immediately, no sheet detour.
+   Brokered (bench) sales go through the prefilled sheet instead. */
+function submitSaleDirect(p){
+  var avail = stockOf(p.variety, p.form, p.unit);
+  if (p.qty > avail + 1e-9){ toast('Not enough in stock — you have ' + fmtQty(avail, p.unit) + '.', true); return false; }
+  var custId = p.customerId;
+  if (!custId && p.newCustName){
+    custId = uid('c');
+    state.customers.push({id:custId, name:p.newCustName, type:'Direct', contact:'', notes:''});
+  }
+  if (!custId){ toast('That sale needs a customer.', true); return false; }
+  recordSaleFromParts({customerId:custId, variety:p.variety, form:p.form, unit:p.unit, qty:p.qty,
+    pricePer:p.pricePer, total:p.total, date:todayStr(), note:'', readyTrayIds:[]});
+  save(); savedToast('sale — ' + money(p.total)); render();
+  return true;
+}
+function openSaleSheet(editId, prefill){
+  var s = null;
+  if (editId) for (var i=0;i<state.sales.length;i++) if (state.sales[i].id===editId) s = state.sales[i];
+  var pf = prefill || null;
+  var inv = inventory();
+  var keys = Object.keys(inv).filter(function(k){ return inv[k].qty > 0 || (s && invKey(s.variety,s.form,s.unit)===k) || (pf && invKey(pf.variety,pf.form,pf.unit)===k); });
+  var prodOpts = keys.map(function(k){ var e=inv[k]; return {k:k, label: varietyName(e.variety)+' — '+(e.form==='live'?'Live tray':'Cut')+' ('+fmtQty(e.qty,e.unit)+' on hand)', variety:e.variety, form:e.form, unit:e.unit}; });
+  var readyLive = activeTrays().filter(function(t){ return trayStage(t)==='Ready'; });
+  var initCust = s ? s.customerId : (pf ? (pf.customerId || '') : '');
+  var custOpts = state.customers.map(function(c){ return '<option value="'+c.id+'"'+(initCust===c.id?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
+  var initProdKey = s ? invKey(s.variety,s.form,s.unit) : (pf ? invKey(pf.variety,pf.form,pf.unit) : '');
+  var initReadyTray = (pf && pf.readyTrayId) ? pf.readyTrayId : (s && s.trayIds && s.trayIds.length ? s.trayIds[0] : '');
+  var benchOn = !!initReadyTray;
+  var body = '<label for="f-sale-cust">Customer</label><select id="f-sale-cust"><option value="">— pick a customer —</option>'+custOpts+'<option value="__new"'+(pf && pf.newCustName ? ' selected' : '')+'>➕ New customer…</option></select>' +
+    '<div id="quickCust" style="display:'+(pf && pf.newCustName ? 'block' : 'none')+';"><label for="f-qc-name">New customer name</label><input type="text" id="f-qc-name" value="'+(pf && pf.newCustName ? esc(pf.newCustName) : '')+'">' +
+    '<label for="f-qc-type">Type</label><select id="f-qc-type">'+CUSTOMER_TYPES.map(function(t){return '<option>'+t+'</option>';}).join('')+'</select></div>' +
+    '<label for="f-sale-prod">Product (from your harvested stock)</label><select id="f-sale-prod">' +
+    (prodOpts.length ? prodOpts.map(function(p){ return '<option value="'+p.k+'"'+(initProdKey===p.k?' selected':'')+'>'+esc(p.label)+'</option>'; }).join('') : '<option value="">— nothing in stock —</option>') + '</select>' +
+    (readyLive.length && !s ? '<label style="display:flex; gap:8px; align-items:center; font-size:15px; color:var(--ink);"><input type="checkbox" id="f-sale-bench" style="width:22px; height:22px; min-width:22px;"'+(benchOn?' checked':'')+'> Sell a live tray straight off the bench instead</label>' +
+    '<div id="benchRow" style="display:'+(benchOn?'block':'none')+';"><label for="f-sale-bench-tray">Ready tray</label><select id="f-sale-bench-tray">'+readyLive.map(function(t){ return '<option value="'+t.id+'"'+(initReadyTray===t.id?' selected':'')+'>Tray '+esc(t.code)+' · '+esc(varietyName(t.variety))+'</option>'; }).join('')+'</select></div>' : '') +
+    (s && s.trayIds && s.trayIds.length ? '<p class="small mut">Bench sale — linked to Tray ' + esc((s.trayCodes||[]).join(', ')) + '. The tray link stays as-is when you edit; delete the sale to free the tray again.</p>' : '') +
+    '<input type="hidden" id="f-ready-tray" value="' + esc(s && s.trayIds ? s.trayIds.join(',') : initReadyTray) + '">' +
+    '<div class="row"><div><label for="f-sale-qty">Quantity</label><input type="number" id="f-sale-qty" min="0" step="any" value="'+(s? s.qty : (pf? pf.qty : ''))+'"></div>' +
+    '<div><label for="f-sale-unit">Unit</label><select id="f-sale-unit">'+['oz','lb','trays','packs'].map(function(u){ return '<option value="'+u+'"'+((s&&s.unit===u)||(pf&&pf.unit===u)?' selected':'')+'>'+u+'</option>'; }).join('')+'</select></div></div>' +
+    '<div class="row"><div><label for="f-sale-price">Price each</label><input type="number" id="f-sale-price" min="0" step="any" value="'+(s? s.pricePer : (pf? pf.pricePer : ''))+'"></div>' +
+    '<div><label for="f-sale-total">Total</label><input type="number" id="f-sale-total" min="0" step="any" value="'+(s? s.total : (pf? pf.total : ''))+'"></div></div>' +
+    '<label for="f-sale-date">Date</label><input type="date" id="f-sale-date" value="'+(s? s.date : (pf && pf.date ? pf.date : todayStr()))+'">' +
+    '<label for="f-sale-note">Note (optional)</label><input type="text" id="f-sale-note" value="'+(s? esc(s.note||'') : '')+'">' +
+    '<p class="small mut" id="saleAvail"></p>';
+  openSheet(s ? 'Edit sale' : 'Log a sale', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save sale', cls:'amber', onClick:function(){ submitSaleFromForm(editId, prodOpts); }}
+  ], function(){
+    var custSel = document.getElementById('f-sale-cust');
+    custSel.addEventListener('change', function(){ document.getElementById('quickCust').style.display = custSel.value==='__new' ? 'block' : 'none'; });
+    var bench = document.getElementById('f-sale-bench');
+    var benchTraySel = document.getElementById('f-sale-bench-tray');
+    function syncReadyTray(){
+      var hid = document.getElementById('f-ready-tray'); if (!hid || editId) return;
+      hid.value = (bench && bench.checked && benchTraySel) ? benchTraySel.value : '';
+    }
+    if (bench) bench.addEventListener('change', function(){ document.getElementById('benchRow').style.display = bench.checked ? 'block' : 'none'; syncReadyTray(); updAvail(); });
+    if (benchTraySel) benchTraySel.addEventListener('change', syncReadyTray);
+    ['f-sale-prod','f-sale-qty','f-sale-price'].forEach(function(id){ var el=document.getElementById(id); if (el) el.addEventListener('input', updAvail); });
+    function updAvail(){
+      var note = document.getElementById('saleAvail'); if (!note) return;
+      var useBench = bench && bench.checked;
+      if (useBench){ note.textContent = 'Bench sale: saving records the sale against the tray and marks it harvested — no separate harvest step.'; return; }
+      var k = val('f-sale-prod'); var e = inv[k];
+      var availNow = e ? e.qty : 0;
+      if (s && k === invKey(s.variety,s.form,s.unit)) availNow += Number(s.qty)||0;
+      note.textContent = k ? ('On hand: ' + fmtQty(availNow, e ? e.unit : '')) : '';
+      var q = num(val('f-sale-qty'), 0), p = num(val('f-sale-price'), 0);
+      var tot = document.getElementById('f-sale-total');
+      if (q > 0 && p > 0 && document.activeElement !== tot) tot.value = Math.round(q*p*100)/100;
+    }
+    updAvail();
+  });
+}
+/* The form's Save path: validates, inspects the hidden readyTrayId and
+   routes the data to recordSaleFromParts (direct recording). It never
+   creates a harvest record itself. */
+function submitSaleFromForm(editId, prodOpts){
+  var readyTrayVal = val('f-ready-tray');
+  var readyTrayIds = readyTrayVal ? readyTrayVal.split(',').filter(Boolean) : [];
+  var old = null;
+  if (editId) for (var i=0;i<state.sales.length;i++) if (state.sales[i].id===editId) old = state.sales[i];
+  var useBench = readyTrayIds.length > 0;
+  var benchTray = useBench ? findTray(readyTrayIds[0]) : null;
+  if (useBench && !benchTray){ toast('That bench tray is no longer there — pick another.', true); return; }
+  var custId = val('f-sale-cust');
+  var newCust = null;
+  if (custId === '__new'){
+    var nm = val('f-qc-name').trim();
+    if (!nm){ toast('Give the new customer a name.', true); return; }
+    newCust = {id:uid('c'), name:nm, type:val('f-qc-type'), contact:'', notes:''};
+    custId = newCust.id;
+  }
+  if (!custId){ toast('Pick a customer (or add a new one).', true); return; }
+  var qty = num(val('f-sale-qty'), 0), pricePer = num(val('f-sale-price'), 0), total = num(val('f-sale-total'), 0);
+  if (qty <= 0){ toast('Quantity needs to be above zero.', true); return; }
+  if (total <= 0 && pricePer > 0) total = Math.round(qty*pricePer*100)/100;
+  if (total <= 0){ toast('Enter a price or a total.', true); return; }
+  if (pricePer <= 0) pricePer = Math.round(total/qty*100)/100;
+  var variety, form, unit = val('f-sale-unit');
+  if (useBench){
+    variety = benchTray.variety; form = 'live'; unit = 'trays';
+    if (qty !== readyTrayIds.length){ toast('A bench sale is one sale per tray — quantity must match the linked tray (' + readyTrayIds.length + ').', true); return; }
+  } else {
+    var k = val('f-sale-prod');
+    var picked = null;
+    prodOpts.forEach(function(p){ if (p.k===k) picked = p; });
+    if (!picked){ toast('Pick a product from your stock.', true); return; }
+    variety = picked.variety; form = picked.form;
+    var avail = stockOf(variety, form, picked.unit);
+    if (old && invKey(old.variety,old.form,old.unit) === k) avail += Number(old.qty)||0;
+    var qtyInUnit = qty;
+    if (unit !== picked.unit){
+      if (picked.unit==='oz' && unit==='lb') qtyInUnit = qty*16;
+      else if (picked.unit==='lb' && unit==='oz') qtyInUnit = qty/16;
+      else { toast('Unit must match the stock unit ('+picked.unit+') or convert oz/lb.', true); return; }
+    }
+    if (qtyInUnit > avail + 1e-9){ toast('Not enough in stock — you have ' + fmtQty(avail, picked.unit) + '.', true); return; }
+    qty = qtyInUnit; unit = picked.unit;
+  }
+  if (newCust) state.customers.push(newCust);
+  if (editId) deleteSaleCascade(editId);
+  recordSaleFromParts({customerId:custId, variety:variety, form:form, unit:unit, qty:qty, pricePer:pricePer,
+    total:total, date:val('f-sale-date') || todayStr(), note:val('f-sale-note').trim(), readyTrayIds:readyTrayIds});
+  save(); closeSheet(); savedToast('sale — ' + money(total)); render();
+}
+function openSowSheet(batch){
+  var vOpts = VARIETIES.map(function(v){ return '<option value="'+v.id+'">'+esc(v.name)+' — ready in about '+v.total+' days</option>'; }).join('');
+  var body = '';
+  if (batch) body += '<label for="f-count">How many trays?</label><input type="number" id="f-count" min="1" step="1" value="4">';
+  body += '<label for="f-variety">Variety</label><select id="f-variety">'+vOpts+'</select>' +
+    '<label for="f-sow">Sow date</label><input type="date" id="f-sow" value="'+todayStr()+'">' +
+    '<div class="row"><div><label for="f-seed">Seed per tray (grams)</label><input type="number" id="f-seed" min="0" step="any"></div>' +
+    '<div><label for="f-tray-size">Tray size (optional)</label><input type="text" id="f-tray-size" placeholder="e.g. 10×20"></div></div>' +
+    '<label for="f-note">Note (optional)</label><input type="text" id="f-note" placeholder="e.g. Restaurant batch">' +
+    '<p class="small mut" id="sowHint"></p>';
+  openSheet(batch ? 'Sow a batch of trays' : 'Sow a tray', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label: batch ? 'Sow batch' : 'Sow tray', cls:'', onClick:function(){ submitSowForm(batch); }}
+  ], function(){
+    var vs = document.getElementById('f-variety'), hint = document.getElementById('sowHint');
+    function upd(){ var v = varietyById(vs.value); if (!v || !hint) return;
+      document.getElementById('f-seed').placeholder = 'typical ' + v.seedG + ' g';
+      hint.textContent = v.name + ': about ' + v.germ + ' days covered/germinating, then ' + v.light + ' days in light — harvest around day ' + v.total + '. Sowing takes seed out of your seed stock.'; }
+    vs.addEventListener('change', upd); upd();
+  });
+}
+function submitSowForm(batch){
+  var variety = val('f-variety'), sow = val('f-sow') || todayStr();
+  var count = batch ? Math.floor(num(val('f-count'), 0)) : 1;
+  if (count < 1 || count > 200){ toast('Tray count needs to be between 1 and 200.', true); return; }
+  var seedG = num(val('f-seed'), 0);
+  if (seedG < 0){ toast('Seed amount cannot be negative.', true); return; }
+  var v = varietyById(variety);
+  if (seedG > 0){
+    var need = seedG * count;
+    var row = null;
+    for (var si=0; si<state.seeds.length; si++) if (state.seeds[si].variety === variety) row = state.seeds[si];
+    if (row){
+      var have = Number(row.onHand)||0;
+      if (need > have + 1e-9){ toast('Not enough ' + (v ? v.name : variety) + ' seed on hand — you have ' + have + ' g.', true); return; }
+      row.onHand = Math.round((have - need)*100)/100;
+    }
+  }
+  for (var i=0;i<count;i++){
+    state.seq = (state.seq||0)+1;
+    state.trays.push({id:uid('t'), code:'T-' + state.seq, variety:variety, sowDate:sow, seedG:seedG,
+      traySize:val('f-tray-size').trim(), lightDate:'', readyFlag:false, status:'active', note:val('f-note').trim()});
+  }
+  save(); closeSheet(); savedToast(count + (count===1 ? ' tray sown' : ' trays sown')); render();
+}
+function openTraySheet(editId){
+  var t = editId ? findTray(editId) : null; if (!t) return;
+  var vOpts = VARIETIES.map(function(v){ return '<option value="'+v.id+'"'+(t.variety===v.id?' selected':'')+'>'+esc(v.name)+'</option>'; }).join('');
+  var body = '<label for="f-variety">Variety</label><select id="f-variety">'+vOpts+'</select>' +
+    '<label for="f-sow">Sow date</label><input type="date" id="f-sow" value="'+esc(t.sowDate)+'">' +
+    '<label for="f-light">Moved to light (blank = still covered)</label><input type="date" id="f-light" value="'+esc(t.lightDate||'')+'">' +
+    '<div class="row"><div><label for="f-seed">Seed used (grams)</label><input type="number" id="f-seed" min="0" step="any" value="'+(t.seedG||0)+'"></div>' +
+    '<div><label for="f-tray-size">Tray size</label><input type="text" id="f-tray-size" value="'+esc(t.traySize||'')+'"></div></div>' +
+    '<label style="display:flex; gap:8px; align-items:center; font-size:15px; color:var(--ink);"><input type="checkbox" id="f-ready" style="width:22px; height:22px; min-width:22px;"'+(t.readyFlag?' checked':'')+'> Ready to harvest now</label>' +
+    '<label for="f-note">Note</label><input type="text" id="f-note" value="'+esc(t.note||'')+'">';
+  openSheet('Edit Tray ' + t.code, body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save tray', cls:'', onClick:function(){
+      t.variety = val('f-variety'); t.sowDate = val('f-sow') || t.sowDate;
+      t.lightDate = val('f-light'); t.seedG = Math.max(0, num(val('f-seed'), 0));
+      t.traySize = val('f-tray-size').trim(); t.readyFlag = document.getElementById('f-ready').checked;
+      t.note = val('f-note').trim();
+      save(); closeSheet(); savedToast('Tray ' + t.code); render();
+    }}
+  ]);
+}
+function openHarvestSheet(trayId){
+  var ready = activeTrays().filter(function(t){ return trayStage(t)==='Ready'; });
+  var anyActive = activeTrays();
+  var list = ready.length ? ready : anyActive;
+  if (!list.length){ toast('No growing trays to harvest yet.', true); return; }
+  var selId = trayId || (ready.length ? ready[0].id : list[0].id);
+  var tOpts = list.map(function(t){ return '<option value="'+t.id+'"'+(t.id===selId?' selected':'')+'>Tray '+esc(t.code)+' · '+esc(varietyName(t.variety))+' ('+stagePill(trayStage(t)).replace(/<[^>]+>/g,'')+')</option>'; }).join('');
+  var body = '<label for="f-tray">Tray</label><select id="f-tray">'+tOpts+'</select>' +
+    '<label for="f-form">Harvest as</label><select id="f-form"><option value="cut">Cut (loose greens)</option><option value="live">Live tray (whole tray)</option></select>' +
+    '<div class="row"><div><label for="f-qty">Amount</label><input type="number" id="f-qty" min="0" step="any" value="8"></div>' +
+    '<div><label for="f-unit">Unit</label><select id="f-unit"><option value="oz">oz</option><option value="lb">lb</option><option value="trays">trays</option><option value="packs">packs</option></select></div></div>' +
+    '<label for="f-date">Date</label><input type="date" id="f-date" value="'+todayStr()+'">' +
+    '<label for="f-note">Note (optional)</label><input type="text" id="f-note">' +
+    '<p class="small mut">The tray is marked harvested and the greens go into your stock, ready to sell.</p>';
+  openSheet('Log a harvest', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save harvest', cls:'amber', onClick:function(){
+      var t = findTray(val('f-tray')); if (!t){ toast('Pick a tray.', true); return; }
+      var q = num(val('f-qty'), 0); if (q <= 0){ toast('Amount needs to be above zero.', true); return; }
+      state.harvests.push({id:uid('h'), trayId:t.id, variety:t.variety, form:val('f-form'), qty:q, unit:val('f-unit'), date:val('f-date') || todayStr(), note:val('f-note').trim()});
+      t.status = 'harvested';
+      save(); closeSheet(); savedToast('harvest logged'); render();
+    }}
+  ], function(){
+    var fs = document.getElementById('f-form'), un = document.getElementById('f-unit'), qt = document.getElementById('f-qty');
+    fs.addEventListener('change', function(){ if (fs.value==='live'){ un.value='trays'; qt.value='1'; } else if (un.value==='trays'){ un.value='oz'; qt.value='8'; } });
+  });
+}
+function openCustomerSheet(editId){
+  var c = null;
+  if (editId) for (var i=0;i<state.customers.length;i++) if (state.customers[i].id===editId) c = state.customers[i];
+  var body = '<label for="f-name">Name</label><input type="text" id="f-name" value="'+(c? esc(c.name) : '')+'" placeholder="e.g. The Corner Bistro">' +
+    '<label for="f-type">Type</label><select id="f-type">'+CUSTOMER_TYPES.map(function(t){ return '<option'+(c&&c.type===t?' selected':'')+'>'+t+'</option>'; }).join('')+'</select>' +
+    '<label for="f-contact">Contact (optional)</label><input type="text" id="f-contact" value="'+(c? esc(c.contact||'') : '')+'" placeholder="phone, email, or who to ask for">' +
+    '<label for="f-notes">Notes (optional)</label><input type="text" id="f-notes" value="'+(c? esc(c.notes||'') : '')+'" placeholder="e.g. Standing order: 2 trays radish, Fridays">';
+  openSheet(c ? 'Edit customer' : 'Add a customer', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save customer', cls:'', onClick:function(){
+      var nm = val('f-name').trim(); if (!nm){ toast('Give the customer a name.', true); return; }
+      if (c){ c.name = nm; c.type = val('f-type'); c.contact = val('f-contact').trim(); c.notes = val('f-notes').trim(); }
+      else state.customers.push({id:uid('c'), name:nm, type:val('f-type'), contact:val('f-contact').trim(), notes:val('f-notes').trim()});
+      save(); closeSheet(); savedToast('customer'); render();
+    }}
+  ]);
+}
+function openMoneySheet(){
+  var catOpts = MONEY_CATS.filter(function(x){ return x !== 'Sale'; });
+  var body = '<label for="f-kind">Kind</label><select id="f-kind"><option value="expense">Expense (money out)</option><option value="income">Income (money in)</option></select>' +
+    '<label for="f-cat">Category</label><select id="f-cat">'+catOpts.map(function(x){ return '<option>'+x+'</option>'; }).join('')+'</select>' +
+    '<label for="f-amount">Amount</label><input type="number" id="f-amount" min="0" step="any" placeholder="0.00">' +
+    '<label for="f-date">Date</label><input type="date" id="f-date" value="'+todayStr()+'">' +
+    '<label for="f-note">Note (optional)</label><input type="text" id="f-note" placeholder="e.g. Radish seed, 500 g bag">' +
+    '<p class="small mut">Sales post themselves from the Sales tab — add everything else here (seed, trays, packaging, market fees).</p>';
+  openSheet('Add income / expense', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save entry', cls:'', onClick:function(){
+      var amt = num(val('f-amount'), 0); if (amt <= 0){ toast('Amount needs to be above zero.', true); return; }
+      state.money.push({id:uid('m'), date:val('f-date') || todayStr(), kind:val('f-kind'), category:val('f-cat'), amount:amt, note:val('f-note').trim(), refId:null, auto:false});
+      save(); closeSheet(); savedToast('money entry'); render();
+    }}
+  ]);
+}
+function openSeedSheet(){
+  var vOpts = VARIETIES.map(function(v){ return '<option value="'+v.id+'">'+esc(v.name)+'</option>'; }).join('');
+  var body = '<label for="f-variety">Variety</label><select id="f-variety">'+vOpts+'</select>' +
+    '<div class="row"><div><label for="f-onhand">On hand (grams)</label><input type="number" id="f-onhand" min="0" step="any" value="0"></div>' +
+    '<div><label for="f-lowat">Flag low at (grams)</label><input type="number" id="f-lowat" min="0" step="any" value="25"></div></div>' +
+    '<p class="small mut" id="seedHint"></p>' +
+    '<p class="small mut">One row per variety — saving with a variety you already track updates that row. Sowing takes seed out of stock on its own.</p>';
+  openSheet('Add / update seed', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save seed', cls:'', onClick:function(){
+      var vid = val('f-variety'), on = Math.max(0, num(val('f-onhand'), 0)), low = Math.max(0, num(val('f-lowat'), 0));
+      var row = null;
+      for (var i=0;i<state.seeds.length;i++) if (state.seeds[i].variety === vid) row = state.seeds[i];
+      if (row){ row.onHand = on; row.lowAt = low; }
+      else state.seeds.push({id:uid('sd'), variety:vid, onHand:on, lowAt:low});
+      save(); closeSheet(); savedToast('seed stock'); render();
+    }}
+  ], function(){
+    var vs = document.getElementById('f-variety'), hint = document.getElementById('seedHint');
+    function upd(){
+      var v = varietyById(vs.value); if (!v) return;
+      var row = null;
+      for (var i=0;i<state.seeds.length;i++) if (state.seeds[i].variety === vs.value) row = state.seeds[i];
+      if (row){ document.getElementById('f-onhand').value = row.onHand; document.getElementById('f-lowat').value = row.lowAt; }
+      hint.textContent = v.name + ': typical sow is about ' + v.seedG + ' g per tray.';
+    }
+    vs.addEventListener('change', upd); upd();
+  });
+}
+
+/* ---------- Money ---------- */
+function viewMoney(){
+  var today = todayStr();
+  var wk = moneyInRange(weekStartStr(), today);
+  var mo = moneyInRange(monthStartStr(), today);
+  var all = moneyInRange('0000-01-01', '9999-12-31');
+  var h = '<h2 class="view-title">Money</h2>';
+  h += '<div class="grid">' +
+    '<div class="stat"><div class="k">Income this week</div><div class="v">' + money(wk.income) + '</div><div class="s">expenses ' + money(wk.expense) + '</div></div>' +
+    '<div class="stat"><div class="k">Net this week</div><div class="v">' + money(wk.net) + '</div><div class="s">income minus expenses</div></div>' +
+    '<div class="stat"><div class="k">Net this month</div><div class="v">' + money(mo.net) + '</div><div class="s">' + money(mo.income) + ' in · ' + money(mo.expense) + ' out</div></div>' +
+    '<div class="stat"><div class="k">Net all time</div><div class="v">' + money(all.net) + '</div><div class="s">' + money(all.income) + ' in · ' + money(all.expense) + ' out</div></div></div>';
+  h += '<div class="row" style="margin-bottom:12px;"><div><button type="button" class="btn" data-act="money-add">➕ Add income / expense</button></div>' +
+       '<div><button type="button" class="btn ghost" data-act="print">🖨 Print summary</button></div></div>';
+  var rows = state.money.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,40);
+  h += '<div class="card">';
+  if (!rows.length) h += '<p class="empty">No money entries yet. Sales you log appear here on their own; add seed and supply costs as expenses so the net is honest.</p>';
+  else {
+    h += '<table><tr><th>Date</th><th>Entry</th><th class="num">Amount</th><th></th></tr>';
+    rows.forEach(function(m){
+      h += '<tr><td>' + fmtDate(m.date) + '</td><td>' + esc(m.category) + (m.note ? ' — ' + esc(m.note) : '') + (m.auto ? ' <span class="pill">from a sale</span>' : '') + '</td>' +
+        '<td class="num" style="color:' + (m.kind==='income' ? 'var(--green)' : 'var(--red)') + '; font-weight:700;">' + (m.kind==='income' ? '+' : '−') + money(m.amount) + '</td>' +
+        '<td class="num">' + (m.auto ? '' : '<button type="button" class="del" data-act="money-del" data-id="' + m.id + '" aria-label="Delete money entry">🗑</button>') + '</td></tr>';
+    });
+    h += '</table><p class="small mut">Sale entries are created by the sale itself (they post once, here) — delete the sale in Sales to remove one.</p>';
+  }
+  return h + '</div>';
+}
+
+/* ---------- More ---------- */
+function viewMore(){
+  var h = '<h2 class="view-title">More</h2>';
+  if (state.notes.length){
+    h += '<h3>📝 Tell notes</h3><div class="card"><p class="small mut">Things Tell ' + APP_NAME + ' heard but could not file on its own — kept in your exact words so nothing is ever lost.</p>';
+    state.notes.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).forEach(function(n){
+      h += '<div style="border-bottom:1px solid var(--line); padding:7px 0;"><span class="small mut">' + fmtDate(n.date) + '</span> “' + esc(n.text) + '”' +
+        (n.hint ? '<br><span class="small mut">' + esc(n.hint) + '</span>' : '') +
+        ' <button type="button" class="del" data-act="note-del" data-id="' + n.id + '" aria-label="Delete note">🗑</button></div>';
+    });
+    h += '</div>';
+  }
+  h += '<h3>Farm name</h3><div class="card"><label for="farmNameInput">Shown on your Today page</label>' +
+    '<input type="text" id="farmNameInput" value="' + esc(state.farmName) + '" placeholder="e.g. Sunny Corner Greens">' +
+    '<button type="button" class="btn small" data-act="save-farm-name" style="margin-top:10px;">Save name</button></div>';
+  h += '<h3>Supplies</h3><div class="card"><p class="small" style="margin-top:0;">The full setup checklist — every supply a microgreens grower needs, what to look for, where growers buy it at good prices, and the money-saving move for each kind. Tick items off as you get them.</p>' +
+    '<button type="button" class="btn" data-act="goto-supplies">🛒 Open the supplies guide</button></div>';
+  h += helpHTML();
+  h += '<h3>Your data</h3><div class="card">' +
+    '<p class="small">Everything lives on this device. Export a backup before switching phones or browsers, and import it on the new one.</p>' +
+    '<div class="row"><div><button type="button" class="btn ghost" data-act="export">⬇ Export backup</button></div>' +
+    '<div><button type="button" class="btn ghost" data-act="import">⬆ Import backup</button></div></div>' +
+    (state.demo ? '<p style="margin-top:12px;"><button type="button" class="btn danger small" data-act="clear-demo">Clear sample data &amp; start fresh</button></p>' : '') +
+    '<p style="margin-top:8px;"><button type="button" class="btn ghost small" data-act="reset-all">Erase everything</button></p></div>';
+  h += '<h3>About &amp; Legal</h3><div class="card">' +
+    '<p><b>' + APP_NAME + ' v' + APP_VERSION + '</b><br><span class="small mut">Sold by ' + SELLER_NAME + ' — ' + SELLER_EMAIL + '</span></p>' +
+    '<button type="button" class="btn ghost ww-legal-open-btn" data-act="legal">⚖️ Legal — Terms, Disclaimer &amp; Privacy</button>' +
+    '<p class="small mut" style="margin-top:10px;" id="termsRecordLine"></p></div>';
+  return h;
+}
+function helpHTML(){
+  var items = [
+    ['Sow a tray', 'Tap “Sow a tray” in Trays, pick the variety and the sow date, and the app works out the rest: when it should move into light and when it should be ready, from typical day-ranges for that variety. Sowing several at once? Use “Sow a batch”. If you track seed stock, sowing takes the seed out of stock for you.'],
+    ['Move to light & harvest', 'New trays start in germination (dark/blackout). When a tray is ready for light, Today flags it — open Trays and tap “Move to light”. When the greens are up and ready, tap “Harvest”, choose cut or live tray, and enter how much you got. Harvested product lands in “Harvested & ready to sell”.'],
+    ['Log a sale', 'In Sales, tap “Log a sale”: pick the customer (or add a new one right there), pick the product from what you have harvested, enter quantity and price. Stock goes down and the money appears in Money — once, never twice. Restaurant buying a live tray straight off the bench? The sale form can pull it from a ready tray for you.'],
+    ['Tell ' + APP_NAME, 'Tap the Tell button and say it plainly: “sowed 6 trays of radish”, “moved the broccoli to light”, “sold 2 live trays of radish to The Corner Bistro for $30”, “spent $12 on radish seed”. Tell listens in one press, shows you exactly what it heard, and only saves when you tap Save. Anything it cannot file is kept word-for-word in More → Tell notes. Tell runs on this device — it is not a cloud AI.'],
+    ['Customers & seed stock', 'Customers live in Sales — name, type (restaurant, farmers market, direct…), and contact. Seed stock lives at the bottom of Trays: grams on hand per variety, with a low mark you set; Today warns you before you run out mid-sow.'],
+    ['Finding supplies', 'The Supplies guide (the button on Today, or Supplies in More) has the full checklist: every supply a microgreens setup needs, what it is for, what to look for, and where growers buy it at good prices — seed, trays, growing media, lights and shelving, packaging, and cleaning. Tick items off as you get them; your ticks save on this device and sync between tabs like everything else. Supplier names and sites were checked on the date shown on each entry. Prices change often, so the guide links to each supplier instead of promising a price — always confirm the price on the supplier’s own site before you buy.'],
+    ['Back up your data', 'Your records live only on this device, in this browser. Use More → Export backup regularly and keep the file somewhere safe. On a new device, open this app and use Import backup to bring everything across.']
+  ];
+  var h = '<h3>Help</h3><div class="card help-sec">';
+  items.forEach(function(it){
+    h += '<details class="help-item"><summary>' + esc(it[0]) + '</summary><p>' + esc(it[1]) + '</p></details>';
+  });
+  h += '<p style="margin-top:12px;">Stuck on something else? Email us and tell us what you were trying to do and what happened:</p>' +
+    '<a class="btn" style="display:inline-block; text-decoration:none;" href="mailto:' + SELLER_EMAIL + '?subject=' + encodeURIComponent(APP_NAME + ' help — v' + APP_VERSION) + '&body=' + encodeURIComponent('Tell us what you were trying to do and what happened:\n\n') + '">✉️ Email us for help</a>' +
+    '<p class="small mut" style="margin-top:12px;">Your data lives on your device only — we never see it. Back it up from More → Your data so a lost phone never means lost records.</p></div>';
+  return h;
+}
+
+/* ---------- Supplies guide (§12 dated directory data) ----------
+   Static, dated directory: every supplier below was checked against
+   their own website on SUPPLIES_CHECKED. No hard prices are printed —
+   the guide links out instead, and each entry shows its source and
+   checked date in the UI, per QA-STANDARD §12. User state is only
+   the tick list (state.shop — item ids), inside the single record. */
+var SUPPLIES_CHECKED = 'Oct 30, 2026';
+var SUPPLIERS = [
+  {id:'tlm', name:'True Leaf Market', url:'https://www.trueleafmarket.com', does:'Microgreens & sprouting seed by the ounce or pound, plus grow mats, coco coir and trays — the default seed stop for most growers.'},
+  {id:'johnny', name:'Johnny’s Selected Seeds', url:'https://www.johnnyseeds.com', does:'Pro-grade microgreen seed with per-tray seeding rates, plus hemp grow mats, trays and seed-starting supplies.'},
+  {id:'miga', name:'MIGardener', url:'https://migardener.com', does:'Flat-priced seed packets (about $2 a packet when checked) — the cheap way to trial a new variety before buying it in bulk.'},
+  {id:'groworg', name:'Grow Organic (Peaceful Valley)', url:'https://www.groworganic.com', does:'Certified-organic seed, organic fertilizers and amendments — the stop if you grow and sell as organic.'},
+  {id:'hoss', name:'Grow Hoss (Hoss Tools)', url:'https://growhoss.com', does:'Garden seed, tools and growing supplies, with multipack and bulk seed discounts.'},
+  {id:'bootstrap', name:'Bootstrap Farmer', url:'https://www.bootstrapfarmer.com', does:'Extra-strength 1020 trays, mesh trays, and humidity + blackout domes built to survive years of stacking and washing.'},
+  {id:'ghm', name:'Greenhouse Megastore', url:'https://www.greenhousemegastore.com', does:'1020 trays and coco coir in money-saving bulk and case packs, plus seed-starting gear.'},
+  {id:'farmtek', name:'FarmTek / Growers Supply', url:'https://www.farmtek.com', does:'Commercial-scale grow lights, benches, shelving, fans and greenhouse gear for when you outgrow the spare room.'},
+  {id:'webstaurant', name:'WebstaurantStore', url:'https://www.webstaurantstore.com', does:'Restaurant supply by the case: clamshells, wire shelving, bus tubs, spray bottles, gloves and scales.'},
+  {id:'uline', name:'ULINE', url:'https://www.uline.com', does:'Clamshells, labels and packaging in carton quantities, shipped fast.'},
+  {id:'amazon', name:'Amazon', url:'https://www.amazon.com', does:'The fallback for one-offs and fast delivery — Barrina-style LED light bars, timers, meters and small gear.'}
+];
+function supplierById(id){ for (var i=0;i<SUPPLIERS.length;i++) if (SUPPLIERS[i].id===id) return SUPPLIERS[i]; return null; }
+
+/* need: 1 = Starter (most setups need it day one), 2 = Nice to have */
+var SUPPLY_CATS = [
+  {id:'seeds', icon:'🌰', name:'Seeds', sup:['tlm','johnny','miga','groworg'],
+   tips:'Seed is your biggest repeat cost, so buy your proven varieties by weight: a 1 lb bag almost always beats the same seed in packets by a wide margin per ounce. Use cheap packets only to trial new varieties. Compare suppliers on cost per ounce including shipping — and check each variety’s seed-per-tray grams in Trays to see how far a pound actually goes.',
+   items:[
+     {id:'seed-bulk', need:1, name:'Bulk seed for your core varieties', why:'Your everyday crops — the ones this app tracks: radish, broccoli, arugula, sunflower, pea shoots, kale, basil, cilantro, amaranth, mustard.', look:'Sold by weight (1 lb+ bags), untreated, high-germination seed sold for microgreens or sprouting. Compare cost per ounce, not per packet.'},
+     {id:'seed-trial', need:1, name:'Trial packets of new varieties', why:'Test a new variety on a tray or two before committing to a pound of it.', look:'Small flat-priced packets; one packet should sow at least one 10×20 tray.'},
+     {id:'seed-store', need:2, name:'Airtight seed storage (jars or bins)', why:'Seed loses germination fast in heat and humidity; airtight storage keeps your rates up.', look:'Opaque and airtight, room for a desiccant pack; store cool and dark.'},
+     {id:'seed-blends', need:2, name:'Pre-mixed variety blends', why:'Spicy or mild mixes restaurants love, without blending your own seed.', look:'Mixes whose varieties finish at the same height and day count, so the tray harvests together.'}
+   ]},
+  {id:'trays', icon:'🪴', name:'Trays & Growing', sup:['bootstrap','ghm','tlm'],
+   tips:'Pay for heavy-duty trays once, or cheap trays every season: thin trays crack under stacking weight and daily washing, extra-strength trays last for years. Case pricing (10–100 packs) drops the per-tray cost a lot — split a case with another grower if you do not need it all yet.',
+   items:[
+     {id:'tray-holes', need:1, name:'1020 trays WITH holes', why:'The grow tray itself — holds your media and drains into the bottom tray for bottom-watering.', look:'Standard 10×20 size. Heavy-duty / extra-strength plastic survives years of stacking and scrubbing.'},
+     {id:'tray-solid', need:1, name:'1020 trays WITHOUT holes', why:'The bottom tray under every grow tray for watering — and flipped over, your blackout cover.', look:'Same 10×20 size so they nest with your grow trays; heavy-duty if you will stack weight on them.'},
+     {id:'tray-mesh', need:2, name:'Mesh-bottom trays', why:'Grow peas and sunflower on mesh with water only — no media to buy, haul or throw away.', look:'Mesh bottom that sits inside a no-holes 1020; fine enough for roots to grip without tangling.'},
+     {id:'tray-dome', need:2, name:'Humidity / blackout domes', why:'Hold moisture over germinating trays so you mist less and germination comes up even.', look:'Vented domes sized for 1020 trays; blackout domes double as the darkness cover for crops like popcorn shoots.'},
+     {id:'tray-weight', need:2, name:'A stacking weight (brick or paver)', why:'A weighted tray stacked on fresh-sown seed forces strong stems and even germination.', look:'Any clean flat 3–5 lb weight works — a paver or a brick in a zip bag. Skip buying one if you already have one.'}
+   ]},
+  {id:'media', icon:'🥥', name:'Growing Media', sup:['tlm','ghm','johnny'],
+   tips:'Compressed coco coir bricks are the budget benchmark: one brick expands to fill many trays, so compare media on cost per tray, not cost per bag. Pre-cut mats are the convenience option — faster and cleaner, at several times the per-tray cost. Rolls you cut yourself sit in between.',
+   items:[
+     {id:'media-coir', need:1, name:'Coco coir bricks / blocks', why:'The budget workhorse medium — cheap per tray, clean, and consistent crop after crop.', look:'Compressed bricks or blocks; pre-rinsed / buffered coir if your tap water is hard. Compare cost per expanded quart.'},
+     {id:'media-mats', need:2, name:'Pre-cut grow mats (hemp, jute, coir, felt)', why:'No mess, fast to sow and harvest, and the cleanest roots for selling live trays.', look:'Pre-cut 10×20 saves real time over rolls. Hemp and jute compost; felt-style pads do not.'},
+     {id:'media-mix', need:2, name:'Fine seed-starting / potting mix', why:'Some growers prefer soil for flavour crops like basil, and for living trays.', look:'Fine peat- or coir-based mix without big bark chunks or slow-release fertilizer pellets.'}
+   ]},
+  {id:'light', icon:'💡', name:'Lighting & Shelving', sup:['amazon','webstaurant','farmtek'],
+   tips:'Plain white 5000K LED shop-light bars grow microgreens just as well as fixtures sold as “grow lights” at two or three times the price — microgreens want bright, even, close light, not fancy spectrums. Two 4-ft bars per shelf on a timer is the standard setup. Wire racks from restaurant supply are sturdier and cheaper than garden-center shelving.',
+   items:[
+     {id:'light-rack', need:1, name:'Wire shelving rack (about 48 in wide)', why:'Four shelves of 1020 trays in about four square feet of floor — the whole grow on one rack.', look:'Wire (not solid) shelves, 48"W × 18–24"D, so air can move through. Epoxy-coated / NSF racks handle wet rooms best.'},
+     {id:'light-bars', need:1, name:'LED light bars, 4 ft (two per shelf)', why:'The light itself — trays sit a few inches under the bars for their days in light.', look:'Linkable 5000K white LED bars (Barrina T5/T8 style is the popular pick). Linkable bars save outlets and timers.'},
+     {id:'light-timer', need:1, name:'Outlet timer', why:'Runs the lights 14–18 hours a day without you touching a switch.', look:'A simple mechanical or digital timer rated for the load; one per rack is plenty.'},
+     {id:'light-fan', need:1, name:'Small fan for the rack', why:'Moving air is your number-one mold defense, and it makes stems sturdier.', look:'Clip-on or small desk fan for every shelf or two; it should rustle the leaves gently, not blast them.'}
+   ]},
+  {id:'water', icon:'💧', name:'Watering & Care', sup:['webstaurant','amazon','uline'],
+   tips:'Drugstore 3% hydrogen peroxide does the same job as branded grow-store bottles. Skip pH and EC meters until you feed nutrients or chase a repeating problem — water-only growing on coir rarely needs them, and an uncalibrated meter misleads more than it helps.',
+   items:[
+     {id:'water-spray', need:1, name:'Spray bottle / pump mister', why:'Misting freshly seeded trays until they are big enough to bottom-water.', look:'A 1–2 L pump sprayer beats a trigger bottle once you sow more than a few trays a day.'},
+     {id:'water-peroxide', need:1, name:'Hydrogen peroxide, 3%', why:'Seed soaks and tray sanitizing at label dilutions — the grower’s standard mold fighter.', look:'Plain 3% from any drugstore aisle is fine. (The 35% food-grade kind is much stronger — handle and dilute with care.)'},
+     {id:'water-soak', need:2, name:'Soaking bucket or big jar', why:'Peas and sunflower soak 8–12 hours before sowing for faster, evener germination.', look:'Any clean food-safe bucket or jar with a lid — you probably already own one.'},
+     {id:'water-ph', need:2, name:'pH test strips or a meter', why:'Only worth it if you feed nutrients or fight the same mold problem again and again.', look:'Cheap strips are enough for an occasional check; a meter needs calibration solution to stay honest.'},
+     {id:'water-ec', need:2, name:'EC / TDS meter', why:'Only for nutrient-fed mesh or hydroponic growing, to mix feed to strength.', look:'Skip it entirely for soil/coir growing on plain water.'}
+   ]},
+  {id:'nutri', icon:'🌿', name:'Nutrients & Amendments', sup:['tlm','hoss','ghm'],
+   tips:'Most microgreens are harvested so young they live off their seed — plain water is the norm and fertilizer is the exception. If a crop runs long (basil, cilantro), a half-strength kelp or leafy-greens feed is plenty. Do not let anyone sell you a full nutrient line for 10-day crops.',
+   items:[
+     {id:'nutri-feed', need:2, name:'Kelp or mild leafy-greens nutrient', why:'An optional boost for long crops and for mesh/hydro grows that get no nutrition from media.', look:'Food-safe and labelled for leafy greens; dose at half strength — more burns roots.'},
+     {id:'nutri-perlite', need:2, name:'Perlite or vermiculite', why:'Loosens coir and soil mixes and helps drainage in bottom-watered trays.', look:'Fine grade; a single bag lasts a long time at a handful per coir brick.'},
+     {id:'nutri-castings', need:2, name:'Worm castings / fine compost', why:'A light top-dress some soil growers swear by for flavour crops.', look:'Fine-sieved only, or the bits clog your tray drainage.'}
+   ]},
+  {id:'pack', icon:'📦', name:'Harvest & Packaging', sup:['webstaurant','uline','amazon'],
+   tips:'Packaging is a cost on every single sale, so buy like a restaurant: clamshells by the case from restaurant-supply or packaging suppliers cost a fraction of small-pack prices — always divide the case price by the count to get your real per-pack cost. The same stores beat grow shops on scales, gloves and tubs, and one combined order means one shipping fee.',
+   items:[
+     {id:'pack-shells', need:1, name:'Clear clamshell containers (8–24 oz)', why:'The standard pack for cut greens at market and for restaurants — shows the product and stacks in the cooler.', look:'PET clamshells sold by the case; vented lids stretch shelf life. Match the size to the weights you sell in Sales.'},
+     {id:'pack-labels', need:1, name:'Labels', why:'Variety, your name, and the harvest or pack date on every pack — plus whatever your local food rules ask for.', look:'Waterproof inkjet/laser labels sized to your clamshell lid. A stamp plus blank labels is the budget route.'},
+     {id:'pack-scale', need:1, name:'Kitchen / produce scale', why:'Weigh every pack so portions — and the sales you log here — match what you actually sold.', look:'At least 11 lb / 5 kg capacity, 0.1 oz / 1 g steps, ounce/gram switchable; restaurant-supply scales survive a wet bench.'},
+     {id:'pack-knife', need:1, name:'Harvest knife or scissors', why:'A clean cut at the base is faster and gentler than tearing, and keeps packs tidy.', look:'A simple serrated harvest knife or kitchen shears you can sanitize between trays.'},
+     {id:'pack-dry', need:2, name:'Salad spinner or drying rack', why:'Greens must go into the pack dry, or they wilt and turn slimy in the clamshell.', look:'A big salad spinner for small batches, or a mesh drying rack if you cut into tubs.'}
+   ]},
+  {id:'clean', icon:'🧼', name:'Cleaning & Food Safety', sup:['webstaurant','uline','amazon'],
+   tips:'Sanitizer and gloves are consumables, so price them per use, not per bottle: concentrates you dilute yourself beat ready-to-use sprays by a lot. Add cleaning supplies to your packaging case order and share the one shipping fee.',
+   items:[
+     {id:'clean-tubs', need:1, name:'Wash tubs / bus tubs (at least two)', why:'Washing trays, dunking tools, carrying harvests — the unglamorous backbone of a clean grow.', look:'Restaurant bus tubs are cheap, stackable and food-safe. One for wash, one for rinse/sanitize.'},
+     {id:'clean-sanitizer', need:1, name:'Food-safe sanitizer', why:'Trays and tools get sanitized between every crop — this is what keeps mold out of the next tray.', look:'Peroxide-based or quaternary sanitizer labelled for food-contact surfaces, mixed at the label dilution.'},
+     {id:'clean-gloves', need:1, name:'Nitrile gloves', why:'Clean hands for every harvest and pack-out, without stopping to scrub between trays.', look:'Powder-free nitrile, bought by the box — restaurant-supply pricing beats drugstore pricing.'},
+     {id:'clean-brush', need:2, name:'Scrub brushes', why:'Coir and roots have to be scrubbed out of tray corners before sanitizing can work.', look:'Stiff nylon brushes that fit tray corners; replace them when the bristles splay.'},
+     {id:'clean-towels', need:2, name:'Paper towels / lint-free towels', why:'Trays and tools go back on the rack dry, not dripping.', look:'Buy by the case on the same order as your packaging to share the shipping.'}
+   ]}
+];
+var supCat = 'all', supQuery = '';
+function shopCount(){
+  var total = 0, got = 0, have = {};
+  (state.shop || []).forEach(function(id){ have[id] = true; });
+  SUPPLY_CATS.forEach(function(c){ c.items.forEach(function(it){ total++; if (have[it.id]) got++; }); });
+  return {total:total, got:got};
+}
+function shopProgressText(){
+  var c = shopCount();
+  return 'My list: ' + c.got + ' of ' + c.total + ' supplies ticked off. Ticks save on this device and sync between tabs.';
+}
+function supSupplierHTML(s){
+  return '<div class="sup-sup"><div><b>' + esc(s.name) + '</b><br><span class="small mut">' + esc(s.does) + '</span><br><span class="small mut">Source: supplier’s own website · Checked ' + SUPPLIES_CHECKED + '</span></div>' +
+    '<a class="sup-buy" href="' + s.url + '" target="_blank" rel="noopener">Visit ↗</a></div>';
+}
+function supListHTML(){
+  var q = supQuery.trim().toLowerCase();
+  var have = {};
+  (state.shop || []).forEach(function(id){ have[id] = true; });
+  var out = '';
+  SUPPLY_CATS.forEach(function(cat){
+    if (supCat !== 'all' && supCat !== cat.id) return;
+    var items = cat.items.filter(function(it){
+      if (!q) return true;
+      return (it.name + ' ' + it.why + ' ' + cat.name).toLowerCase().indexOf(q) >= 0;
+    });
+    if (!items.length) return;
+    out += '<h3>' + cat.icon + ' ' + esc(cat.name) + '</h3><div class="card">';
+    items.forEach(function(it){
+      var got = !!have[it.id];
+      out += '<div class="sup-item' + (got ? ' got' : '') + '" data-shoprow="' + it.id + '">' +
+        '<label class="sup-check"><input type="checkbox" data-shop="' + it.id + '"' + (got ? ' checked' : '') + '>' +
+        '<span><b class="sup-name">' + esc(it.name) + '</b> ' + (it.need === 1 ? '<span class="pill ready">Starter</span>' : '<span class="pill">Nice to have</span>') +
+        '<br><span class="small">' + esc(it.why) + '</span><br><span class="small mut">Look for: ' + esc(it.look) + '</span></span></label></div>';
+    });
+    out += '<div class="sup-tips"><b>💰 Save money:</b> ' + esc(cat.tips) + '</div>';
+    out += '<div style="margin-top:6px;"><div class="small" style="font-weight:700; margin:10px 0 2px;">Where growers buy this</div>';
+    cat.sup.forEach(function(sid){ var s = supplierById(sid); if (s) out += supSupplierHTML(s); });
+    out += '</div></div>';
+  });
+  if (!out) out = '<div class="card empty">Nothing matches “' + esc(supQuery) + '”. Try a shorter word, or clear the search.</div>';
+  return out;
+}
+function supChipHTML(id, label){
+  return '<button type="button" class="sup-chip' + (supCat === id ? ' active' : '') + '" data-supcat="' + id + '">' + esc(label) + '</button>';
+}
+function viewSupplies(){
+  var h = '<h2 class="view-title">🛒 Supplies guide</h2>';
+  h += '<div class="card"><p class="small" style="margin-top:0;">Everything a microgreens setup needs — what each thing is for, what to look for, and where growers buy it at good prices. <b>Starter</b> items are what most setups need on day one; the rest are nice to have. Tick things off as you get them.</p>' +
+    '<p class="small mut" style="margin-bottom:0;">Prices and shipping change all the time, so instead of promising prices this guide links you to each supplier’s own site. Every supplier was checked against their own website on ' + SUPPLIES_CHECKED + ' — always confirm the current price there before you buy.</p></div>';
+  h += '<label for="supSearch">Search the guide</label><input type="text" id="supSearch" placeholder="Try “clamshell”, “coir”, “LED”…" value="' + esc(supQuery) + '" autocomplete="off">';
+  h += '<div class="sup-chips" style="margin-top:10px;">' + supChipHTML('all', 'All') + SUPPLY_CATS.map(function(c){ return supChipHTML(c.id, c.icon + ' ' + c.name); }).join('') + '</div>';
+  h += '<p class="small" id="supProgress">' + esc(shopProgressText()) + '</p>';
+  h += '<div id="supList">' + supListHTML() + '</div>';
+  h += '<div class="card"><p class="small" style="margin:0 0 10px;">Done shopping for now? Clear the ticks and start the list fresh for your next restock.</p><button type="button" class="btn ghost small" data-act="sup-clear">Clear my ticks</button></div>';
+  return h;
+}
+function wireSupplies(root){
+  var si = document.getElementById('supSearch');
+  if (si) si.addEventListener('input', function(){ supQuery = si.value; var box = document.getElementById('supList'); if (box) box.innerHTML = supListHTML(); });
+  root.querySelectorAll('[data-supcat]').forEach(function(b){
+    b.addEventListener('click', function(){ supCat = b.getAttribute('data-supcat'); render(); });
+  });
+  var box = document.getElementById('supList');
+  if (box) box.addEventListener('change', function(e){
+    var t = e.target;
+    if (t && t.type === 'checkbox' && t.hasAttribute && t.hasAttribute('data-shop')) toggleShopItem(t.getAttribute('data-shop'), t.checked);
+  });
+}
+function toggleShopItem(id, on){
+  state.shop = state.shop || [];
+  var i = state.shop.indexOf(id);
+  if (on && i < 0) state.shop.push(id);
+  if (!on && i >= 0) state.shop.splice(i, 1);
+  save();
+  var row = document.querySelector('[data-shoprow="' + id + '"]');
+  if (row) row.classList.toggle('got', on);
+  var prog = document.getElementById('supProgress');
+  if (prog) prog.textContent = shopProgressText();
+}
+
+/* ---------- Sample data (generic & fictional) ---------- */
+function loadDemo(){
+  state = blankState();
+  state.setupDone = true; state.demo = true;
+  state.farmName = 'Sample Greens Co';
+  var t = todayStr();
+  var bistro = {id:uid('c'), name:'The Corner Bistro', type:'Restaurant', contact:'Ask for Dana', notes:'Standing order: live radish trays, Fridays'};
+  var market = {id:uid('c'), name:'Riverside Market Stall', type:'Farmers Market', contact:'', notes:''};
+  var csa = {id:uid('c'), name:'Neighborhood CSA Box', type:'Direct', contact:'', notes:'Adds a pack to weekly boxes'};
+  state.customers.push(bistro, market, csa);
+  state.seeds.push({id:uid('sd'), variety:'radish', onHand:240, lowAt:50});
+  state.seeds.push({id:uid('sd'), variety:'broccoli', onHand:90, lowAt:25});
+  state.seeds.push({id:uid('sd'), variety:'arugula', onHand:60, lowAt:20});
+  function mk(variety, sowAgo, lightAgo, seedG, note){
+    state.seq = (state.seq||0)+1;
+    var tr = {id:uid('t'), code:'T-' + state.seq, variety:variety, sowDate:addDaysStr(t, -sowAgo), seedG:seedG,
+      traySize:'10×20', lightDate: lightAgo === null ? '' : addDaysStr(t, -lightAgo), readyFlag:false, status:'active', note:note||''};
+    state.trays.push(tr); return tr;
+  }
+  mk('radish', 7, 4, 25, 'For the bistro');
+  mk('broccoli', 5, null, 12, '');
+  mk('arugula', 2, null, 8, '');
+  mk('sunflower', 9, 5, 30, '');
+  var old = mk('radish', 10, 7, 25, '');
+  old.status = 'harvested';
+  state.harvests.push({id:uid('h'), trayId:old.id, variety:'radish', form:'cut', qty:9, unit:'oz', date:addDaysStr(t, -2), note:''});
+  recordSaleFromParts({customerId:bistro.id, variety:'radish', form:'cut', unit:'oz', qty:6, pricePer:3, total:18, date:addDaysStr(t, -2), note:'', readyTrayIds:[]});
+  state.money.push({id:uid('m'), date:addDaysStr(t, -6), kind:'expense', category:'Seed', amount:24, note:'Radish + broccoli seed', refId:null, auto:false});
+  state.money.push({id:uid('m'), date:addDaysStr(t, -3), kind:'expense', category:'Market Fees', amount:10, note:'Saturday market booth', refId:null, auto:false});
+  save();
+}
+
+/* ---------- Data actions ---------- */
+function exportData(){
+  var payload = {app:APP_NAME, version:APP_VERSION, exportedAt:new Date().toISOString(), state:state};
+  var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'microgreens-manager-backup.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  toast('Backup downloaded ✓');
+}
+function importData(){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.addEventListener('change', function(){
+    var f = inp.files && inp.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try {
+        var parsed = JSON.parse(r.result);
+        var st = parsed && parsed.state ? parsed.state : parsed;
+        if (!st || !Array.isArray(st.trays) || !Array.isArray(st.sales) || !Array.isArray(st.money)) throw new Error('shape');
+        confirmSheet('Replace everything with this backup?', '<p>The backup has ' + st.trays.length + ' trays, ' + st.sales.length + ' sales and ' + st.money.length + ' money entries. What is on this device now will be replaced.</p>', 'Import it', function(){
+          var keep = blankState();
+          Object.keys(keep).forEach(function(k){ if (st[k] !== undefined) keep[k] = st[k]; });
+          state = keep; save(); closeSheet(); toast('Backup imported ✓'); render();
+        });
+      } catch(e){ toast('That file is not a Microgreens Manager backup.', true); }
+    };
+    r.readAsText(f);
+  });
+  inp.click();
+}
+function printSummary(){
+  var today = todayStr();
+  var wk = moneyInRange(weekStartStr(), today), mo = moneyInRange(monthStartStr(), today), all = moneyInRange('0000-01-01', '9999-12-31');
+  var act = activeTrays(), inv = inventory();
+  var h = '<h1>' + esc(state.farmName || APP_NAME) + ' — summary</h1><p>Printed ' + fmtDate(today) + '</p>';
+  h += '<h2>Money</h2><table><tr><th>Period</th><th class="num">Income</th><th class="num">Expenses</th><th class="num">Net</th></tr>';
+  [['This week', wk], ['This month', mo], ['All time', all]].forEach(function(r){
+    h += '<tr><td>' + r[0] + '</td><td class="num">' + money(r[1].income) + '</td><td class="num">' + money(r[1].expense) + '</td><td class="num">' + money(r[1].net) + '</td></tr>';
+  });
+  h += '</table><h2>Growing now (' + act.length + ' trays)</h2>';
+  if (act.length){
+    h += '<table><tr><th>Tray</th><th>Stage</th><th class="num">Harvest due</th></tr>';
+    act.forEach(function(tr){ h += '<tr><td>' + esc(tr.code) + ' · ' + esc(varietyName(tr.variety)) + '</td><td>' + trayStage(tr) + '</td><td class="num">' + fmtDate(trayDueHarvest(tr)) + '</td></tr>'; });
+    h += '</table>';
+  }
+  h += '<h2>In stock</h2>';
+  var keys = Object.keys(inv).filter(function(k){ return inv[k].qty > 0; });
+  if (keys.length){
+    h += '<table><tr><th>Product</th><th class="num">On hand</th></tr>';
+    keys.forEach(function(k){ var e = inv[k]; h += '<tr><td>' + esc(varietyName(e.variety)) + ' — ' + (e.form==='live'?'Live tray':'Cut') + '</td><td class="num">' + fmtQty(e.qty, e.unit) + '</td></tr>'; });
+    h += '</table>';
+  } else h += '<p>Nothing in stock.</p>';
+  document.getElementById('printArea').innerHTML = h;
+  window.print();
+}
+
+/* ---------- View wiring ---------- */
+function wireView(root){
+  root.querySelectorAll('[data-act]').forEach(function(el){
+    el.addEventListener('click', function(){
+      var act = el.getAttribute('data-act'), id = el.getAttribute('data-id');
+      handleAct(act, id);
+    });
+  });
+}
+function handleAct(act, id){
+  if (act === 'tell') openTellSheet();
+  else if (act === 'setup-start'){
+    var nm = (document.getElementById('setupName')||{}).value || '';
+    state.farmName = nm.trim(); state.setupDone = true; save(); savedToast('you are set up'); render();
+  }
+  else if (act === 'setup-demo'){
+    var nm2 = (document.getElementById('setupName')||{}).value || '';
+    loadDemo(); if (nm2.trim()) state.farmName = nm2.trim(); save(); toast('Sample data loaded — look around, then clear it in More when you are ready.'); render();
+  }
+  else if (act === 'goto-money'){ currentTab = 'money'; render(); }
+  else if (act === 'goto-supplies'){ currentTab = 'supplies'; render(); }
+  else if (act === 'goto-seed-supplies'){ supCat = 'seeds'; supQuery = ''; currentTab = 'supplies'; render(); }
+  else if (act === 'sup-clear'){
+    confirmSheet('Clear your supply ticks?', '<p>Every tick in the supplies guide comes off, ready for your next restock list. The guide itself stays.</p>', 'Clear ticks', function(){
+      state.shop = []; save(); closeSheet(); toast('Supply list cleared'); render();
+    });
+  }
+  else if (act === 'sow') openSowSheet(false);
+  else if (act === 'sow-batch') openSowSheet(true);
+  else if (act === 'sale') openSaleSheet(null);
+  else if (act === 'sale-edit') openSaleSheet(id);
+  else if (act === 'sale-del'){
+    confirmSheet('Delete this sale?', '<p>The product goes back into stock and its Money entry is removed. A bench sale frees its tray again.</p>', 'Delete sale', function(){
+      deleteSaleCascade(id); save(); closeSheet(); toast('Sale deleted'); render();
+    });
+  }
+  else if (act === 'harvest') openHarvestSheet(null);
+  else if (act === 'harvest-del'){
+    confirmSheet('Delete this harvest?', '<p>The harvested amount comes back out of stock.</p>', 'Delete harvest', function(){
+      state.harvests = state.harvests.filter(function(x){ return x.id !== id; });
+      save(); closeSheet(); toast('Harvest deleted'); render();
+    });
+  }
+  else if (act === 'tray-light'){
+    var t1 = findTray(id); if (!t1) return;
+    t1.lightDate = todayStr(); save(); savedToast('Tray ' + t1.code + ' moved to light'); render();
+  }
+  else if (act === 'tray-ready'){
+    var t2 = findTray(id); if (!t2) return;
+    t2.readyFlag = true; save(); savedToast('Tray ' + t2.code + ' marked ready'); render();
+  }
+  else if (act === 'tray-harvest') openHarvestSheet(id);
+  else if (act === 'tray-edit') openTraySheet(id);
+  else if (act === 'tray-lost'){
+    var t3 = findTray(id); if (!t3) return;
+    confirmSheet('Dump Tray ' + t3.code + '?', '<p>' + esc(varietyName(t3.variety)) + ', sowed ' + fmtDate(t3.sowDate) + '. Mark it lost (mold, spill, poor germination). It stops counting as growing.</p>', 'Mark lost', function(){
+      t3.status = 'lost'; save(); closeSheet(); toast('Tray ' + t3.code + ' marked lost'); render();
+    });
+  }
+  else if (act === 'tray-delete'){
+    var t4 = findTray(id); if (!t4) return;
+    confirmSheet('Delete Tray ' + t4.code + ' for good?', '<p>This removes the tray record. Harvests logged from it stay in your stock history.</p>', 'Delete tray', function(){
+      state.trays = state.trays.filter(function(x){ return x.id !== id; });
+      save(); closeSheet(); toast('Tray deleted'); render();
+    });
+  }
+  else if (act === 'cust-add') openCustomerSheet(null);
+  else if (act === 'cust-edit') openCustomerSheet(id);
+  else if (act === 'cust-del'){
+    var c = null; state.customers.forEach(function(x){ if (x.id===id) c = x; });
+    confirmSheet('Delete ' + (c ? esc(c.name) : 'this customer') + '?', '<p>Past sales keep the name on the receipts in Money; the customer just leaves the pick list.</p>', 'Delete customer', function(){
+      state.customers = state.customers.filter(function(x){ return x.id !== id; });
+      save(); closeSheet(); toast('Customer deleted'); render();
+    });
+  }
+  else if (act === 'money-add') openMoneySheet();
+  else if (act === 'money-del'){
+    confirmSheet('Delete this money entry?', '<p>Manual entries only — sale entries are removed by deleting the sale itself.</p>', 'Delete entry', function(){
+      state.money = state.money.filter(function(x){ return x.id !== id; });
+      save(); closeSheet(); toast('Entry deleted'); render();
+    });
+  }
+  else if (act === 'print') printSummary();
+  else if (act === 'seed-add') openSeedSheet();
+  else if (act === 'seed-del'){
+    confirmSheet('Remove this seed row?', '<p>The variety leaves your seed stock list. Trays already sown are not affected.</p>', 'Remove row', function(){
+      state.seeds = state.seeds.filter(function(x){ return x.id !== id; });
+      save(); closeSheet(); toast('Seed row removed'); render();
+    });
+  }
+  else if (act === 'note-del'){
+    state.notes = state.notes.filter(function(x){ return x.id !== id; });
+    save(); toast('Note deleted'); render();
+  }
+  else if (act === 'save-farm-name'){
+    var el = document.getElementById('farmNameInput');
+    state.farmName = el ? el.value.trim() : ''; save(); savedToast('farm name'); render();
+  }
+  else if (act === 'export') exportData();
+  else if (act === 'import') importData();
+  else if (act === 'clear-demo'){
+    confirmSheet('Clear the sample data?', '<p>All the made-up trays, sales and money go away and you start with a clean, empty app.</p>', 'Clear it', function(){
+      state = blankState(); state.setupDone = true; save(); closeSheet(); toast('Sample data cleared'); render();
+    });
+  }
+  else if (act === 'reset-all'){
+    confirmSheet('Erase EVERYTHING?', '<p>Every tray, sale, customer and money entry on this device is deleted. Export a backup first if you might want it back.</p>', 'Erase everything', function(){
+      state = blankState(); save(); closeSheet(); toast('Everything erased'); render();
+    });
+  }
+  else if (act === 'legal') openLegalReader();
+}
+
+/* ---------- Tell Microgreens Manager (on-device, §9b) ---------- */
+function pushNote(text, hint){
+  state.notes.push({id:uid('n'), date:todayStr(), text:text, hint:hint||''});
+  save();
+}
+var NUMWORDS = {one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50};
+function digitizeWords(t){
+  return t.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty)\b/g, function(w){ return String(NUMWORDS[w]); });
+}
+function matchVariety(t){
+  var aliases = [['pea shoots','pea'],['pea shoot','pea'],['pea','pea'],['sunflower','sunflower'],['radish','radish'],['broccoli','broccoli'],['arugula','arugula'],['kale','kale'],['basil','basil'],['cilantro','cilantro'],['amaranth','amaranth'],['mustard','mustard']];
+  for (var i=0;i<aliases.length;i++) if (t.indexOf(aliases[i][0]) >= 0) return aliases[i][1];
+  return null;
+}
+function titleCase(s){ return s.replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+function parseQtyUnit(t){
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack)\b/);
+  if (!m) return null;
+  var unit = m[3];
+  if (unit.indexOf('tray') === 0) unit = 'trays';
+  else if (unit === 'oz' || unit.indexOf('ounce') === 0) unit = 'oz';
+  else if (unit === 'lb' || unit === 'lbs' || unit.indexOf('pound') === 0) unit = 'lb';
+  else unit = 'packs';
+  return {qty:parseFloat(m[1]), unit:unit, live:!!m[2]};
+}
+function parseMoneyBits(t){
+  var m = t.match(/\$\s*(\d+(?:\.\d{1,2})?)/) || t.match(/(\d+(?:\.\d{1,2})?)\s*dollars?/);
+  if (!m) return null;
+  var amt = parseFloat(m[1]);
+  var tail = t.slice(t.indexOf(m[0]) + m[0].length, t.indexOf(m[0]) + m[0].length + 12);
+  var each = /\b(each|per)\b/.test(tail) || /\b(each|per)\b/.test(t.slice(Math.max(0, t.indexOf(m[0]) - 6), t.indexOf(m[0])));
+  return {amount:amt, each:each};
+}
+function parseTell(raw){
+  var t = digitizeWords(' ' + String(raw||'').toLowerCase().replace(/(\d)\.(\d)/g, '$1\u0001$2').replace(/[.,!?]/g, ' ').replace(/\u0001/g, '.') + ' ');
+  var out = {kind:'note', lines:[], problems:[], raw:raw};
+  var variety = matchVariety(t);
+  if (/\bsold\b/.test(t) || /\bsell\b/.test(t)){
+    out.kind = 'sale';
+    var qu = parseQtyUnit(t), mb = parseMoneyBits(t);
+    if (!variety) out.problems.push('Tell could not tell which variety was sold.');
+    if (!qu) out.problems.push('Tell could not hear a quantity (like “2 trays” or “8 ounces”).');
+    if (!mb) out.problems.push('Tell could not hear a price (like “for $30”).');
+    var custName = null;
+    var toIdx = t.indexOf(' to ');
+    if (toIdx >= 0){
+      var rest = t.slice(toIdx + 4);
+      var forIdx = rest.indexOf(' for ');
+      custName = (forIdx >= 0 ? rest.slice(0, forIdx) : rest).trim();
+      if (custName) custName = titleCase(custName);
+    }
+    if (!custName) out.problems.push('Tell could not hear who bought it (try “…to The Corner Bistro”).');
+    if (!out.problems.length){
+      var form = (qu.live || qu.unit === 'trays') && t.indexOf(' cut') < 0 ? 'live' : 'cut';
+      if (qu.unit === 'trays') form = t.indexOf(' cut') >= 0 ? 'cut' : 'live';
+      var qty = qu.qty, unit = qu.unit;
+      var pricePer, total;
+      if (mb.each){ pricePer = mb.amount; total = Math.round(qty * pricePer * 100) / 100; }
+      else { total = mb.amount; pricePer = Math.round(total / qty * 100) / 100; }
+      var cust = null;
+      state.customers.forEach(function(c){ if (c.name.toLowerCase() === custName.toLowerCase()) cust = c; });
+      out.parts = {customerId: cust ? cust.id : null, newCustName: cust ? null : custName, variety:variety, form:form, unit:unit, qty:qty, pricePer:pricePer, total:total};
+      out.lines.push('Sale: ' + fmtQty(qty, unit) + ' ' + varietyName(variety) + ' (' + (form==='live' ? 'live tray' : 'cut') + ') to ' + custName + (cust ? '' : ' (new customer)'));
+      out.lines.push('Total ' + money(total) + ' (' + money(pricePer) + ' each) — posts to Money once, as always.');
+      if (form === 'live' && unit === 'trays'){
+        var stockLive = stockOf(variety, 'live', 'trays');
+        if (qty > stockLive){
+          var ready = activeTrays().filter(function(tr){ return tr.variety === variety && trayStage(tr) === 'Ready'; })
+            .sort(function(a,b){ return (trayDueHarvest(a)||'') < (trayDueHarvest(b)||'') ? -1 : 1; });
+          if (qty === 1 && ready.length){
+            out.brokered = true; out.parts.readyTrayId = ready[0].id;
+            out.lines.push('Off the bench: Tray ' + ready[0].code + ' is ready — the sale sheet opens with it picked, so you can check it before saving.');
+          } else {
+            out.problems.push('No live ' + varietyName(variety) + ' trays in stock, and no ready tray on the bench to pull from.');
+          }
+        }
+      } else {
+        var avail = stockOf(variety, form, unit);
+        if (qty > avail + 1e-9){
+          if (unit === 'lb' && stockOf(variety, form, 'oz') >= qty * 16 - 1e-9){
+            out.parts.qty = qty * 16; out.parts.unit = 'oz'; out.parts.pricePer = Math.round(pricePer / 16 * 100) / 100;
+            out.lines.push('Counted as ' + fmtQty(out.parts.qty, 'oz') + ' — your stock is in ounces.');
+          } else out.problems.push('Only ' + fmtQty(avail, unit) + ' of ' + varietyName(variety) + ' in stock — harvest first, then sell.');
+        }
+      }
+    }
+    return out;
+  }
+  if (/\bsow/.test(t)){
+    out.kind = 'sow';
+    var mq = t.match(/(\d+)\s*trays?/);
+    var count = mq ? parseInt(mq[1], 10) : 1;
+    if (!variety){ out.problems.push('Tell could not tell which variety you sowed.'); return out; }
+    var v = varietyById(variety);
+    out.sow = {variety:variety, count:count, seedG: v ? v.seedG : 0};
+    out.lines.push('Sow ' + count + (count === 1 ? ' tray' : ' trays') + ' of ' + varietyName(variety) + ', today.');
+    out.lines.push('Seed: the typical ' + (v ? v.seedG : 0) + ' g per tray, taken out of seed stock if you track it. Edit a tray later if you used a different amount.');
+    return out;
+  }
+  if (/\bharvest/.test(t)){
+    out.kind = 'harvest';
+    var qu2 = parseQtyUnit(t);
+    if (!qu2) out.problems.push('Tell could not hear an amount (like “12 ounces”).');
+    if (!variety) out.problems.push('Tell could not tell which variety was harvested.');
+    if (!out.problems.length){
+      var codeM = String(raw).match(/tray\s*(t-?\d+)/i);
+      var tray = null;
+      if (codeM) state.trays.forEach(function(tr){ if (tr.code.toLowerCase() === ('T-' + codeM[1].replace(/^t-?/i, ''))) tray = tr; });
+      if (!tray){
+        var cands = activeTrays().filter(function(tr){ return tr.variety === variety; })
+          .sort(function(a,b){ return trayStage(b) === 'Ready' ? 1 : trayStage(a) === 'Ready' ? -1 : a.sowDate < b.sowDate ? -1 : 1; });
+        tray = cands[0] || null;
+      }
+      if (!tray || tray.status !== 'active') out.problems.push('No growing ' + varietyName(variety) + ' tray to harvest.');
+      else {
+        out.harvest = {trayId:tray.id, variety:variety, form: qu2.unit === 'trays' ? 'live' : 'cut', qty:qu2.qty, unit:qu2.unit};
+        out.lines.push('Harvest Tray ' + tray.code + ' (' + varietyName(variety) + '): ' + fmtQty(qu2.qty, qu2.unit) + ', ' + (out.harvest.form === 'live' ? 'live tray' : 'cut') + '.');
+        out.lines.push('The tray is marked harvested and the greens go into stock.');
+      }
+    }
+    return out;
+  }
+  if (t.indexOf('light') >= 0 && /\b(moved|move|put|into|to)\b/.test(t)){
+    out.kind = 'light';
+    var cands2 = activeTrays().filter(function(tr){ return !tr.lightDate && (!variety || tr.variety === variety); })
+      .sort(function(a,b){ return a.sowDate < b.sowDate ? -1 : 1; });
+    if (!cands2.length) out.problems.push('No covered tray' + (variety ? ' of ' + varietyName(variety) : '') + ' is waiting for light.');
+    else {
+      out.light = {trayId:cands2[0].id};
+      out.lines.push('Move Tray ' + cands2[0].code + ' (' + varietyName(cands2[0].variety) + ', sowed ' + fmtDate(cands2[0].sowDate) + ') to light, today.');
+      if (cands2.length > 1) out.lines.push('(' + cands2.length + ' covered trays match — Tell picked the oldest. Use Trays to move a different one.)');
+    }
+    return out;
+  }
+  if (/\b(spent|paid|bought)\b/.test(t)){
+    out.kind = 'expense';
+    var mb2 = parseMoneyBits(t);
+    if (!mb2) out.problems.push('Tell could not hear an amount (like “$12”).');
+    else {
+      var cat = 'Other Expense';
+      if (t.indexOf('seed') >= 0) cat = 'Seed';
+      else if (t.indexOf('packag') >= 0) cat = 'Packaging';
+      else if (t.indexOf('tray') >= 0) cat = 'Trays & Supplies';
+      else if (t.indexOf('market') >= 0 || t.indexOf('booth') >= 0 || t.indexOf('fee') >= 0) cat = 'Market Fees';
+      var onIdx = t.indexOf(' on ');
+      var noteTxt = onIdx >= 0 ? String(raw).slice(onIdx + 4).trim() : '';
+      out.expense = {amount:mb2.amount, category:cat, note:noteTxt};
+      out.lines.push('Expense: ' + money(mb2.amount) + ' — ' + cat + (noteTxt ? ' (' + noteTxt + ')' : '') + ', today.');
+    }
+    return out;
+  }
+  out.problems.push('Tell could not file that one — it is kept below word-for-word as a note.');
+  return out;
+}
+function openTellSheet(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var body = '<p class="small" style="margin-top:0;">Talk or type, in plain words. Try:</p>' +
+    '<p class="small mut">“sowed 6 trays of radish” · “sold 2 live trays of broccoli to The Corner Bistro for $30” · “harvested 12 ounces of kale” · “moved the broccoli to light” · “spent $12 on radish seed”</p>' +
+    '<label for="tellText">What happened?</label><textarea id="tellText" rows="3" placeholder="Say it or type it here…"></textarea>' +
+    (SR ? '' : '<p class="small mut">🎤 Voice is not available in this browser — typing here works exactly the same. Voice works in Chrome/Android and the Play edition.</p>');
+  openSheet('Tell ' + APP_NAME, body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'🎤 Listen', cls:'', onClick:function(){ startTellListen(); }},
+    {label:'Read it →', cls:'amber', onClick:function(){
+      var txt = val('tellText').trim();
+      if (!txt){ toast('Say or type something first.', true); return; }
+      tellConfirm(parseTell(txt), txt);
+    }}
+  ]);
+}
+var tellRec = null;
+function startTellListen(){
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var ta = document.getElementById('tellText');
+  if (!SR){ toast('Voice is not available in this browser — typing works the same.', true); return; }
+  if (tellRec){ try { tellRec.stop(); } catch(e){} tellRec = null; return; }
+  try {
+    tellRec = new SR();
+    tellRec.lang = 'en-US'; tellRec.interimResults = true; tellRec.continuous = false;
+    tellRec.onresult = function(ev){
+      var finalTxt = '', interim = '';
+      for (var i=0;i<ev.results.length;i++){
+        if (ev.results[i].isFinal) finalTxt += ev.results[i][0].transcript;
+        else interim += ev.results[i][0].transcript;
+      }
+      if (ta) ta.value = (finalTxt + interim).trim();
+    };
+    tellRec.onerror = function(ev){ tellRec = null; if (ev.error !== 'aborted') toast('Voice hiccup (' + ev.error + ') — typing works too.', true); };
+    tellRec.onend = function(){ tellRec = null; };
+    tellRec.start();
+    toast('Listening… say it plainly, then tap “Read it”.');
+  } catch(e){ tellRec = null; toast('Voice could not start here — typing works the same.', true); }
+}
+function tellConfirm(parsed, raw){
+  var lines = parsed.lines.map(function(l){ return '<p style="margin:6px 0;">✓ ' + esc(l) + '</p>'; }).join('');
+  var probs = parsed.problems.map(function(l){ return '<p style="margin:6px 0; color:var(--red);">⚠ ' + esc(l) + '</p>'; }).join('');
+  var body = '<p class="small mut" style="margin-top:0;">You said: “' + esc(raw) + '”</p>' + lines + probs +
+    '<p class="small mut">Nothing is saved until you tap Save. Wrong? Edit the words and Tell will read them again.</p>';
+  var buttons = [{label:'← Edit words', cls:'ghost', onClick:function(){ closeSheet(); setTimeout(function(){ openTellSheet(); var ta = document.getElementById('tellText'); if (ta) ta.value = raw; }, 60); }}];
+  if (parsed.problems.length || parsed.kind === 'note'){
+    buttons.push({label:'Save as a note', cls:'', onClick:function(){ pushNote(raw, parsed.problems.join(' ')); closeSheet(); savedToast('note kept in More'); render(); }});
+  } else {
+    buttons.push({label:'✓ Save', cls:'amber', onClick:function(){ applyTell(parsed, raw); }});
+    buttons.push({label:'Save as a note instead', cls:'ghost', onClick:function(){ pushNote(raw, ''); closeSheet(); savedToast('note kept in More'); render(); }});
+  }
+  openSheet('Check this before saving', body, buttons);
+}
+function applyTell(p, raw){
+  if (p.kind === 'sow'){
+    var err = sowTraysCore(p.sow.variety, p.sow.count, p.sow.seedG);
+    if (err){ toast(err, true); return; }
+    save(); closeSheet(); savedToast(p.sow.count + (p.sow.count === 1 ? ' tray sown' : ' trays sown')); render();
+  } else if (p.kind === 'light'){
+    var t = findTray(p.light.trayId); if (!t){ toast('That tray is gone.', true); return; }
+    t.lightDate = todayStr(); save(); closeSheet(); savedToast('Tray ' + t.code + ' moved to light'); render();
+  } else if (p.kind === 'harvest'){
+    var t2 = findTray(p.harvest.trayId); if (!t2){ toast('That tray is gone.', true); return; }
+    state.harvests.push({id:uid('h'), trayId:t2.id, variety:p.harvest.variety, form:p.harvest.form, qty:p.harvest.qty, unit:p.harvest.unit, date:todayStr(), note:'Logged with Tell'});
+    t2.status = 'harvested';
+    save(); closeSheet(); savedToast('harvest logged'); render();
+  } else if (p.kind === 'expense'){
+    state.money.push({id:uid('m'), date:todayStr(), kind:'expense', category:p.expense.category, amount:p.expense.amount, note:p.expense.note || 'Logged with Tell', refId:null, auto:false});
+    save(); closeSheet(); savedToast('expense — ' + money(p.expense.amount)); render();
+  } else if (p.kind === 'sale' && p.brokered){
+    var pre = {customerId:p.parts.customerId, newCustName:p.parts.newCustName, variety:p.parts.variety, form:p.parts.form, unit:p.parts.unit,
+      qty:p.parts.qty, pricePer:p.parts.pricePer, total:p.parts.total, date:todayStr(), readyTrayId:p.parts.readyTrayId};
+    closeSheet();
+    setTimeout(function(){ openSaleSheet(null, pre); }, 60);
+  } else if (p.kind === 'sale'){
+    closeSheet();
+    submitSaleDirect(p.parts);
+  }
+}
+function sowTraysCore(variety, count, seedG){
+  var row = null;
+  for (var i=0;i<state.seeds.length;i++) if (state.seeds[i].variety === variety) row = state.seeds[i];
+  if (row && seedG > 0){
+    var need = seedG * count, have = Number(row.onHand)||0;
+    if (need > have + 1e-9) return 'Not enough ' + varietyName(variety) + ' seed on hand — you have ' + have + ' g.';
+    row.onHand = Math.round((have - need)*100)/100;
+  }
+  for (var i=0;i<count;i++){
+    state.seq = (state.seq||0)+1;
+    state.trays.push({id:uid('t'), code:'T-' + state.seq, variety:variety, sowDate:todayStr(), seedG:seedG, traySize:'', lightDate:'', readyFlag:false, status:'active', note:''});
+  }
+  return null;
+}
+
+/* ---------- Legal / terms gate ---------- */
+function legalTextHTML(){
+  return '<h2>Legal — Terms, Disclaimer &amp; Privacy</h2>' +
+  '<p><b>' + APP_NAME + ' v' + APP_VERSION + '</b> · Terms version ' + TERMS_VERSION + '<br>Sold by ' + SELLER_NAME + ' — ' + SELLER_EMAIL + '</p>' +
+  '<h3>Terms of Use</h3>' +
+  '<p>By using ' + APP_NAME + ' you agree to these terms. The app is provided for record-keeping and planning for your own growing operation. You get a license to use it on your own devices; you may not resell, redistribute, or reverse-engineer it except where the law says you can.</p>' +
+  '<p>All records you enter are stored only on your device, in your browser\u2019s local storage. There is no account and no server copy. If you clear your browser data, switch devices without importing a backup, or your browser removes site data, records can be lost — exporting backups from More is your responsibility.</p>' +
+  '<p>The app is provided \u201cas is\u201d, without warranties of any kind. To the maximum extent the law allows, ' + SELLER_NAME + '\u2019s total liability for anything connected with the app is limited to the amount you paid for it.</p>' +
+  '<h3>Disclaimer</h3>' +
+  '<p>Growth timelines are typical published day-ranges for each variety. They are planning aids, not guarantees: your seed, temperature, light and water decide what actually happens, and your eyes on the tray always win.</p>' +
+  '<p>Money totals are simple arithmetic on the numbers you enter. They are not accounting, tax, or legal advice. Rules for selling food — permits, labeling, and food-safety requirements — differ by place and change; checking and following the rules that apply to you is your responsibility.</p>' +
+  '<p>Voice entry (\u201cTell\u201d) is a pattern matcher that runs on your device. It is not a cloud AI. Always read the confirmation card before saving — you are responsible for checking the app\u2019s outputs before relying on them.</p>' +
+  '<h3>Privacy</h3>' +
+  '<p>' + APP_NAME + ' collects nothing. There are no accounts, no analytics, no ads, and no third-party trackers in this app, and your records never leave your device unless you export a backup yourself. If you email us for help, we see only what you choose to write in that email.</p>' +
+  '<p>Questions: ' + SELLER_EMAIL + '</p>';
+}
+function termsRecord(){
+  try { var r = JSON.parse(localStorage.getItem(LS_TERMS_KEY) || 'null'); return r && r.version ? r : null; } catch(e){ return null; }
+}
+function termsRecordText(){
+  var r = termsRecord();
+  if (!r) return 'No terms agreement recorded on this device yet.';
+  return 'You agreed to the Terms (version ' + r.version + ') on ' + String(r.acceptedAt||'').slice(0,10) + '.';
+}
+function openLegalReader(){
+  var body = document.getElementById('wwLegalReaderBody');
+  var reader = document.getElementById('wwLegalReader');
+  if (body) body.innerHTML = legalTextHTML();
+  if (reader) reader.hidden = false;
+}
+function initTerms(){
+  var overlay = document.getElementById('wwLegalOverlay');
+  var check = document.getElementById('wwLegalCheck');
+  var agree = document.getElementById('wwLegalAgree');
+  var read = document.getElementById('wwLegalReadTerms');
+  var back = document.getElementById('wwLegalReaderBack');
+  var reader = document.getElementById('wwLegalReader');
+  if (read) read.addEventListener('click', openLegalReader);
+  if (back) back.addEventListener('click', function(){ if (reader) reader.hidden = true; });
+  if (check && agree){
+    check.addEventListener('change', function(){ agree.disabled = !check.checked; });
+    agree.addEventListener('click', function(){
+      if (!check.checked) return;
+      try { localStorage.setItem(LS_TERMS_KEY, JSON.stringify({version:TERMS_VERSION, appVersion:APP_VERSION, acceptedAt:new Date().toISOString()})); } catch(e){}
+      if (overlay) overlay.hidden = true;
+      var line = document.getElementById('termsRecordLine');
+      if (line) line.textContent = termsRecordText();
+      toast('Terms accepted ✓');
+    });
+  }
+  var rec = termsRecord();
+  if (overlay && (!rec || rec.version !== TERMS_VERSION)) overlay.hidden = false;
+}
+
+/* ---------- boot ---------- */
+load();
+buildTabs();
+render();
+initTerms();
+</script>
+<script>
+/* ============================================================================
+   SHARED VOICE DICTATION LAYER — "vv" snippet v1.0 (2026-10-29)
+   Governing standard: QA-STANDARD.md §9a (mic dictation on every data-entry
+   field). Built once, dropped into every catalog app verbatim. Do not fork
+   per app — fix here and re-drop.
+
+   What it does:
+   - Adds a >=48px mic button beside every text input, number input, and
+     textarea (an <input> with no type attribute counts as text). Selects,
+     checkboxes, radios, file/date/tel/email inputs are NOT wired — they keep
+     their native pickers/keyboards (per voice-retrofit-plan.md counting).
+   - Tap the mic -> Web Speech API dictation into that field, exactly as if
+     typed. Interim words show live in the field; nothing auto-submits.
+   - Number fields: spoken numbers are converted ("sixty five" -> 65,
+     "two point five" -> 2.5, "1,200" -> 1200). If the words can't be read as
+     a number, the field is left untouched and the user is told plainly.
+   - After a successful dictation the field receives real bubbling "input"
+     and "change" events, so the host app's own handlers fire exactly as if
+     the user typed.
+   - Fields added later (re-renders, add-row buttons) are wired automatically
+     via MutationObserver.
+   - No SpeechRecognition (Firefox, file:// copies in most browsers, denied
+     permission): the mic shows the honest note "Voice isn't available on
+     this device/browser — typing works as always" and typing is never
+     blocked, hidden, or degraded.
+   - Failed/empty recognition announces "Didn't catch that — try again or
+     type it" and restores the field's previous value.
+
+   Wiring (see README.md in this folder): paste this whole IIFE in a <script>
+   block just before </body>. It injects its own styles (#vv-style) — no
+   other changes needed. It never touches storage, prices, or app state.
+   ============================================================================ */
+(function () {
+  "use strict";
+  if (window.__vvDictation) return; // drop-in twice = wire once
+  window.__vvDictation = "1.0";
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  var FALLBACK_MSG = "Voice isn't available on this device/browser — typing works as always";
+  var MISSED_MSG = "Didn't catch that — try again or type it";
+  var BLOCKED_MSG = "Microphone is blocked — typing works as always. Check the browser's mic permission if you want voice.";
+
+  /* ---- styles (self-injected; dictation-snippet.css holds the same rules) ---- */
+  var CSS = [
+    ".vv-wrap{display:flex;gap:6px;align-items:flex-start}",
+    ".vv-wrap>input,.vv-wrap>textarea{flex:1 1 0;min-width:0}",
+    ".vv-mic{flex:0 0 auto;width:48px;min-width:48px;height:48px;border-radius:8px;border:1px solid #b9c2ba;background:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;-webkit-tap-highlight-color:transparent}",
+    ".vv-mic:active{transform:scale(.96)}",
+    ".vv-mic.vv-live{background:#b3372e;border-color:#b3372e;animation:vvpulse 1s ease-in-out infinite}",
+    "@keyframes vvpulse{0%,100%{opacity:1}50%{opacity:.5}}",
+    ".vv-status{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);max-width:min(92vw,480px);background:#1c2420;color:#fff;padding:10px 14px;border-radius:9px;font-size:14px;line-height:1.35;z-index:99999;box-shadow:0 4px 18px rgba(0,0,0,.25);display:none;text-align:center;pointer-events:none}",
+    ".vv-status.vv-show{display:block}",
+    "@media print{.vv-mic{display:none!important}.vv-status{display:none!important}}"
+  ].join("\n");
+  if (!document.getElementById("vv-style")) {
+    var st = document.createElement("style");
+    st.id = "vv-style"; st.textContent = CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  /* ---- status announcements ---- */
+  var statusEl = null, statusTimer = null;
+  function say(msg, ms) {
+    if (!statusEl) {
+      statusEl = document.createElement("div");
+      statusEl.className = "vv-status"; statusEl.setAttribute("role", "status");
+      statusEl.setAttribute("aria-live", "polite");
+      document.body.appendChild(statusEl);
+    }
+    statusEl.textContent = msg;
+    statusEl.classList.add("vv-show");
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(function () { statusEl.classList.remove("vv-show"); }, ms || 5000);
+  }
+
+  /* ---- spoken-number conversion ---- */
+  var ONES = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+  var TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  function wordsToNumber(s) {
+    var words = s.split(/[\s-]+/), total = 0, current = 0, seen = false, decimal = null, decPlace = 0.1, neg = false;
+    for (var i = 0; i < words.length; i++) {
+      var w = words[i];
+      if (!w || w === "and") continue;
+      if (w === "minus" || w === "negative") { neg = true; continue; }
+      if (w === "point") { decimal = true; continue; }
+      if (decimal) {
+        if (ONES.hasOwnProperty(w) && ONES[w] < 10) { if (decimal === true) decimal = 0; decimal += ONES[w] * decPlace; decPlace /= 10; seen = true; }
+        continue;
+      }
+      if (ONES.hasOwnProperty(w)) { current += ONES[w]; seen = true; }
+      else if (TENS.hasOwnProperty(w)) { current += TENS[w]; seen = true; }
+      else if (w === "hundred") { current = (current || 1) * 100; seen = true; }
+      else if (w === "thousand") { total += (current || 1) * 1000; current = 0; seen = true; }
+      else if (w === "million") { total += (current || 1) * 1000000; current = 0; seen = true; }
+      else if (w === "a" || w === "an") { /* filler before hundred/thousand */ }
+      /* any other word (dollars, feet, hours…) is ignored filler */
+    }
+    if (!seen) return null;
+    var n = total + current + (decimal ? decimal : 0);
+    return neg ? -n : n;
+  }
+  function parseSpokenNumber(raw) {
+    if (!raw) return null;
+    var s = String(raw).toLowerCase().replace(/\$/g, " ").replace(/\s+/g, " ").trim();
+    s = s.replace(/(\d),(?=\d)/g, "$1").replace(/,/g, " "); // 1,200 -> 1200
+    var m = s.match(/-?\d+(?:\.\d+)?/);
+    if (m) { var n = parseFloat(m[0]); if (isFinite(n)) return n; }
+    return wordsToNumber(s);
+  }
+
+  /* ---- field helpers ---- */
+  function isWirable(f) {
+    if (!f || f.dataset.vvWired) return false;
+    if (f.tagName === "TEXTAREA") return !(f.disabled || f.readOnly);
+    if (f.tagName !== "INPUT") return false;
+    var t = (f.getAttribute("type") || "text").toLowerCase();
+    if (t !== "text" && t !== "number") return false;
+    return !(f.disabled || f.readOnly);
+  }
+  function labelFor(f) {
+    var name = "";
+    if (f.id) {
+      var lab = document.querySelector('label[for="' + f.id + '"]');
+      if (lab) name = lab.textContent;
+    }
+    if (!name) {
+      var prev = f.closest ? f.closest("div") : null;
+      var l2 = prev ? prev.querySelector("label") : null;
+      if (l2) name = l2.textContent;
+    }
+    if (!name) name = f.getAttribute("placeholder") || f.getAttribute("name") || "field";
+    return String(name).replace(/\s+/g, " ").trim().slice(0, 60) || "field";
+  }
+  function fireEvents(f) {
+    ["input", "change"].forEach(function (type) {
+      var ev;
+      try { ev = new Event(type, { bubbles: true, composed: true }); }
+      catch (e) { ev = document.createEvent("Event"); ev.initEvent(type, true, true); }
+      f.dispatchEvent(ev);
+    });
+  }
+  function joinText(base, add) {
+    if (!base) return add;
+    if (!add) return base;
+    return base + (/\s$/.test(base) ? "" : " ") + add;
+  }
+
+  /* ---- dictation session ---- */
+  var active = null; // { rec, field, btn, base, finalText, gotResult, done }
+  function stopActive() { if (active && active.rec) { try { active.rec.stop(); } catch (e) {} } }
+  function startDictation(field, btn) {
+    if (active && active.field === field) { stopActive(); return; } // tap again = stop
+    if (active) stopActive();
+    if (!SR) { say(FALLBACK_MSG, 6000); return; }
+    var rec;
+    try { rec = new SR(); } catch (e) { say(FALLBACK_MSG, 6000); return; }
+    var session = { rec: rec, field: field, btn: btn, base: field.value || "", finalText: "", gotResult: false, done: false };
+    active = session;
+    rec.lang = (document.documentElement.getAttribute("lang") || "en-US");
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    btn.classList.add("vv-live");
+    btn.setAttribute("aria-label", "Listening — tap to stop");
+    say("Listening… speak now.");
+    rec.onresult = function (ev) {
+      var interim = "", finalT = "";
+      for (var i = ev.resultIndex; i < ev.results.length; i++) {
+        var r = ev.results[i];
+        if (r.isFinal) finalT += r[0].transcript; else interim += r[0].transcript;
+      }
+      if (finalT) { session.finalText = joinText(session.finalText, finalT.trim()); session.gotResult = true; }
+      var shown = joinText(session.finalText, interim.trim());
+      if (field.type !== "number") field.value = joinText(session.base, shown);
+      else if (shown) field.value = shown; // numbers: show the words until they resolve on end
+    };
+    rec.onerror = function (ev) {
+      if (session.done) return;
+      session.done = true;
+      field.value = session.base;
+      cleanup(session);
+      if (ev && (ev.error === "not-allowed" || ev.error === "service-not-allowed")) say(BLOCKED_MSG, 6500);
+      else if (ev && ev.error === "not-supported") say(FALLBACK_MSG, 6000);
+      else say(MISSED_MSG, 5000);
+    };
+    rec.onend = function () {
+      if (session.done) return;
+      session.done = true;
+      cleanup(session);
+      var heard = (session.finalText || "").trim();
+      if (!heard) { field.value = session.base; say(MISSED_MSG, 5000); return; }
+      if (field.type === "number") {
+        var n = parseSpokenNumber(heard);
+        if (n === null || !isFinite(n)) { field.value = session.base; say(MISSED_MSG, 5000); return; }
+        field.value = String(n);
+      } else {
+        field.value = joinText(session.base, heard);
+      }
+      fireEvents(field);
+      try { field.focus({ preventScroll: false }); } catch (e) {}
+      say("Added: " + heard, 3000);
+    };
+    try { rec.start(); } catch (e) { session.done = true; cleanup(session); field.value = session.base; say(MISSED_MSG, 5000); }
+  }
+  function cleanup(session) {
+    if (active === session) active = null;
+    if (session.btn) { session.btn.classList.remove("vv-live"); session.btn.setAttribute("aria-label", session.btn.dataset.vvLabel || "Voice entry"); }
+  }
+
+  /* ---- wiring ---- */
+  function wireField(f) {
+    if (!isWirable(f)) return;
+    f.dataset.vvWired = "1";
+    var wrap = document.createElement("span");
+    wrap.className = "vv-wrap";
+    f.parentNode.insertBefore(wrap, f);
+    wrap.appendChild(f);
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "vv-mic";
+    btn.innerHTML = "🎤";
+    var lab = "Voice entry for " + labelFor(f);
+    btn.dataset.vvLabel = lab;
+    btn.setAttribute("aria-label", lab);
+    btn.title = "Voice entry";
+    btn.addEventListener("click", function () { startDictation(f, btn); });
+    wrap.appendChild(btn);
+  }
+  function scan(root) {
+    if (!root || !root.querySelectorAll) return;
+    var fields = root.querySelectorAll("input, textarea");
+    for (var i = 0; i < fields.length; i++) wireField(fields[i]);
+    if (root.tagName && (root.tagName === "INPUT" || root.tagName === "TEXTAREA")) wireField(root);
+  }
+
+  function init() {
+    scan(document);
+    if (window.MutationObserver && document.body) {
+      var pending = false;
+      var obs = new MutationObserver(function (muts) {
+        var hasAdds = false;
+        for (var i = 0; i < muts.length; i++) if (muts[i].addedNodes.length) { hasAdds = true; break; }
+        if (!hasAdds || pending) return;
+        pending = true;
+        setTimeout(function () { pending = false; scan(document); }, 60);
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+
+  /* exposed for QA harnesses and future Tell flows */
+  window.__vv = { version: "1.0", supported: !!SR, parseSpokenNumber: parseSpokenNumber, fallbackMessage: FALLBACK_MSG, missedMessage: MISSED_MSG };
+})();
+
+</script>
+</body>
+</html>
