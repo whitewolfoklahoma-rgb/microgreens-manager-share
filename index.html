@@ -60,6 +60,7 @@ td.num,th.num{text-align:right;}
 .pill.ready{background:#dff2df; color:var(--green);}
 .pill.done{background:#e8e8e8; color:#666;}
 .pill.red{background:#f8e3e0; color:var(--red);}
+.pill.soon{background:#fdf3d7; color:#8a5a00;}
 .pill.low{background:#f8e3e0; color:var(--red);}
 .mut{color:var(--muted);} .small{font-size:13px;}
 .del{background:none; border:0; color:var(--red); font-size:18px; cursor:pointer; min-width:40px; min-height:40px;}
@@ -181,7 +182,7 @@ a.sup-buy:hover{background:var(--soft);}
    under one key (microgreens_v1). Offline; no accounts, no server.
    ================================================================ */
 var APP_NAME = 'Microgreens Manager';
-var APP_VERSION = '1.2';
+var APP_VERSION = '1.3';
 var TERMS_VERSION = '1.0';
 var LS_KEY = 'microgreens_v1';
 var LS_TERMS_KEY = 'microgreens_v1_terms';
@@ -190,18 +191,20 @@ var SELLER_EMAIL = 'whitewolfbackoffice@gmail.com';
 
 /* Variety library — typical published grower ranges (days).
    germ = sow → move to light; light = days finishing in light;
-   total = typical sow → harvest. seedG = typical seed per 10×20 tray. */
+   total = typical sow → harvest. seedG = typical seed per 10×20 tray.
+   shelf = typical fridge life once bagged up, in days (editable in the
+   app via Fridge-life settings; the library value is the default). */
 var VARIETIES = [
-  {id:'radish',    name:'Radish',     germ:3, light:4,  total:8,  seedG:25},
-  {id:'broccoli',  name:'Broccoli',   germ:4, light:5,  total:10, seedG:12},
-  {id:'arugula',   name:'Arugula',    germ:4, light:6,  total:11, seedG:8},
-  {id:'sunflower', name:'Sunflower',  germ:4, light:6,  total:11, seedG:30},
-  {id:'pea',       name:'Pea Shoots', germ:5, light:6,  total:13, seedG:120},
-  {id:'kale',      name:'Kale',       germ:4, light:6,  total:11, seedG:10},
-  {id:'basil',     name:'Basil',      germ:6, light:9,  total:16, seedG:5},
-  {id:'cilantro',  name:'Cilantro',   germ:8, light:10, total:19, seedG:15},
-  {id:'amaranth',  name:'Amaranth',   germ:3, light:5,  total:9,  seedG:6},
-  {id:'mustard',   name:'Mustard',    germ:3, light:4,  total:8,  seedG:10}
+  {id:'radish',    name:'Radish',     germ:3, light:4,  total:8,  seedG:25,  shelf:10},
+  {id:'broccoli',  name:'Broccoli',   germ:4, light:5,  total:10, seedG:12,  shelf:10},
+  {id:'arugula',   name:'Arugula',    germ:4, light:6,  total:11, seedG:8,   shelf:8},
+  {id:'sunflower', name:'Sunflower',  germ:4, light:6,  total:11, seedG:30,  shelf:10},
+  {id:'pea',       name:'Pea Shoots', germ:5, light:6,  total:13, seedG:120, shelf:8},
+  {id:'kale',      name:'Kale',       germ:4, light:6,  total:11, seedG:10,  shelf:10},
+  {id:'basil',     name:'Basil',      germ:6, light:9,  total:16, seedG:5,   shelf:7},
+  {id:'cilantro',  name:'Cilantro',   germ:8, light:10, total:19, seedG:15,  shelf:7},
+  {id:'amaranth',  name:'Amaranth',   germ:3, light:5,  total:9,  seedG:6,   shelf:8},
+  {id:'mustard',   name:'Mustard',    germ:3, light:4,  total:8,  seedG:10,  shelf:10}
 ];
 function varietyById(id){ for (var i=0;i<VARIETIES.length;i++) if (VARIETIES[i].id===id) return VARIETIES[i]; return null; }
 function varietyName(id){ var v = varietyById(id); return v ? v.name : id; }
@@ -212,7 +215,8 @@ var MONEY_CATS = ['Sale','Seed','Trays & Supplies','Packaging','Market Fees','Ot
 /* ---------- state ---------- */
 function blankState(){
   return { v:1, farmName:'', setupDone:false, demo:false, seq:0,
-    trays:[], harvests:[], sales:[], customers:[], money:[], seeds:[], notes:[], shop:[] };
+    trays:[], harvests:[], sales:[], customers:[], money:[], seeds:[], notes:[], shop:[],
+    packs:[], shelfLife:{} };
 }
 var state = blankState();
 function uid(p){ state.seq = (state.seq||0)+1; return (p||'r') + Date.now().toString(36) + state.seq.toString(36); }
@@ -295,11 +299,100 @@ function inventory(){
     if (s.trayIds && s.trayIds.length) inv[k].qty += s.trayIds.length;
     inv[k].qty -= Number(s.qty)||0;
   });
+  /* Bagging greens up takes them OUT of the loose pile: each pack lot's
+     total weight (packages × per-package weight, when a weight was
+     given) is subtracted from loose cut stock, ounces first, then the
+     pound bucket — so the same greens never count as both loose and
+     bagged. Sold or tossed later, they stay out: they left the loose
+     pile when they were bagged. Lots with no weight recorded leave the
+     loose weights alone (the bags are counted, not weighed). */
+  var packedOz = {};
+  (state.packs||[]).forEach(function(p){
+    if (p.weightOz) packedOz[p.variety] = (packedOz[p.variety]||0) + (Number(p.qty)||0) * (Number(p.weightOz)||0);
+  });
+  Object.keys(packedOz).forEach(function(v){
+    var oz = packedOz[v]; if (!(oz > 0)) return;
+    var ko = invKey(v, 'cut', 'oz'), kl = invKey(v, 'cut', 'lb');
+    if (!inv[ko]) inv[ko] = {variety:v, form:'cut', unit:'oz', qty:0};
+    var fromOz = Math.min(Math.max(inv[ko].qty, 0), oz);
+    inv[ko].qty -= fromOz; oz -= fromOz;
+    if (oz > 1e-9){
+      if (!inv[kl]) inv[kl] = {variety:v, form:'cut', unit:'lb', qty:0};
+      inv[kl].qty -= oz / 16;
+    }
+  });
   return inv;
 }
 function stockOf(variety, form, unit){
   var inv = inventory(); var e = inv[invKey(variety, form, unit)];
   return e ? e.qty : 0;
+}
+
+/* ---------- Packaged stock: bagged-up lots in the fridge ----------
+   A pack lot records greens bagged up ready to sell. What is LEFT in a
+   lot is computed, never stored: packed qty − what sales drew from it
+   (draws live on the sale records as packDraws, the same single-source
+   trick as bench trayIds — deleting a sale hands its bags straight
+   back) − what was tossed (a dated log on the lot itself). */
+function findPack(id){ var ps = state.packs||[]; for (var i=0;i<ps.length;i++) if (ps[i].id===id) return ps[i]; return null; }
+function packSoldQty(lot){
+  var n = 0;
+  state.sales.forEach(function(s){ (s.packDraws||[]).forEach(function(dr){ if (dr.packId === lot.id) n += Number(dr.qty)||0; }); });
+  return n;
+}
+function saleDrawnQty(sale){ return (sale.packDraws||[]).reduce(function(a, d){ return a + (Number(d.qty)||0); }, 0); }
+function packTossedQty(lot){ return (lot.tossed||[]).reduce(function(a, x){ return a + (Number(x.qty)||0); }, 0); }
+function packLeft(lot){ return Math.max(0, (Number(lot.qty)||0) - packSoldQty(lot) - packTossedQty(lot)); }
+function packOnHand(variety, pkgUnit){
+  var n = 0;
+  (state.packs||[]).forEach(function(p){ if (p.variety === variety && (!pkgUnit || p.pkgUnit === pkgUnit)) n += packLeft(p); });
+  return n;
+}
+function packsOnHandTotal(){ var n = 0; (state.packs||[]).forEach(function(p){ n += packLeft(p); }); return n; }
+function shelfDays(variety){
+  var o = (state.shelfLife||{})[variety];
+  if (o && Number(o) > 0) return Number(o);
+  var v = varietyById(variety);
+  return v && v.shelf ? v.shelf : 10;
+}
+function packAge(lot){ return daysBetween(lot.date, todayStr()); }
+function packFreshness(lot){
+  var age = packAge(lot), life = shelfDays(lot.variety);
+  if (age >= life) return 'past';
+  if (age >= life - 2) return 'soon';
+  return 'fresh';
+}
+/* FIFO draw plan: oldest packs sell first. Lots in the package type the
+   buyer asked for go first (still oldest-first) so a "bags" sale does
+   not quietly eat the clamshells when bags are sitting right there. */
+function planPackDraw(variety, qty, preferUnit){
+  var lots = (state.packs||[]).filter(function(p){ return p.variety === variety && packLeft(p) > 0; })
+    .sort(function(a, b){
+      var am = a.pkgUnit === preferUnit ? 0 : 1, bm = b.pkgUnit === preferUnit ? 0 : 1;
+      if (am !== bm) return am - bm;
+      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    });
+  var plan = [], remaining = qty;
+  lots.forEach(function(lot){
+    if (remaining <= 1e-9) return;
+    var take = Math.min(packLeft(lot), remaining);
+    if (take > 0){ plan.push({packId:lot.id, qty:take}); remaining -= take; }
+  });
+  return plan;
+}
+function packUpCore(parts){
+  var lot = {id:uid('pk'), variety:parts.variety, harvestId:parts.harvestId||null,
+    qty:parts.qty, pkgUnit:parts.pkgUnit, weightOz: parts.weightOz ? Number(parts.weightOz) : null,
+    date:parts.date || todayStr(), location:(parts.location || 'Fridge'), note:parts.note || '', tossed:[]};
+  state.packs = state.packs || [];
+  state.packs.push(lot);
+  return lot;
+}
+function packDrawSummary(plan){
+  return plan.map(function(d){
+    var lot = findPack(d.packId);
+    return lot ? (d.qty + ' ' + lot.pkgUnit + ' packed ' + fmtDate(lot.date)) : (d.qty + ' bagged');
+  }).join('; ');
 }
 
 /* ---------- money: derived totals (sales post once, via refId) ---------- */
@@ -411,6 +504,26 @@ function needsAttention(){
     if ((Number(s.onHand)||0) <= (Number(s.lowAt)||0))
       items.push({trayId:null, kind:'seed', text:'Seed running low: ' + varietyName(s.variety) + ' — ' + (Number(s.onHand)||0) + ' g on hand.'});
   });
+  /* Bagged stock ageing in the fridge — the oldest lot of each variety
+     speaks for the variety, past-prime first. */
+  var byVar = {};
+  (state.packs||[]).forEach(function(p){
+    var left = packLeft(p);
+    if (left <= 0) return;
+    var f = packFreshness(p);
+    if (f === 'fresh') return;
+    if (!byVar[p.variety]) byVar[p.variety] = {past:0, soon:0, oldest:p.date, unit:p.pkgUnit, life:shelfDays(p.variety)};
+    var agg = byVar[p.variety];
+    if (p.date < agg.oldest){ agg.oldest = p.date; agg.unit = p.pkgUnit; }
+    if (f === 'past') agg.past += left; else agg.soon += left;
+  });
+  Object.keys(byVar).forEach(function(v){
+    var agg = byVar[v];
+    if (agg.past > 0)
+      items.push({trayId:null, kind:'pastprime', text: agg.past + ' ' + agg.unit + ' of ' + varietyName(v) + ' are past their ' + agg.life + '-day fridge life (oldest packed ' + fmtDate(agg.oldest) + ') — sell today or toss them.'});
+    else if (agg.soon > 0)
+      items.push({trayId:null, kind:'sellsoon', text: agg.soon + ' ' + agg.unit + ' of ' + varietyName(v) + ' are ' + daysBetween(agg.oldest, today) + ' days old — sell soon (fridge life ' + agg.life + ' days, packed ' + fmtDate(agg.oldest) + ').'});
+  });
   return items;
 }
 
@@ -440,10 +553,11 @@ function viewToday(){
   var wk = moneyInRange(weekStartStr(), todayStr());
   var inv = inventory(); var stockKinds = 0, stockUnits = 0;
   Object.keys(inv).forEach(function(k){ if (inv[k].qty > 0){ stockKinds++; } });
+  var packTotal = packsOnHandTotal();
   h += '<div class="grid">' +
     '<div class="stat"><div class="k">Trays growing</div><div class="v">' + growing + '</div><div class="s">' + inLight + ' in light now</div></div>' +
     '<div class="stat"><div class="k">Ready to harvest</div><div class="v">' + ready + '</div><div class="s">check Trays to cut</div></div>' +
-    '<div class="stat"><div class="k">Harvested, unsold</div><div class="v">' + stockKinds + '</div><div class="s">product kinds in stock</div></div>' +
+    '<div class="stat"><div class="k">Harvested, unsold</div><div class="v">' + stockKinds + '</div><div class="s">' + (packTotal > 0 ? packTotal + ' bagged up &amp; ready to sell' : 'product kinds in stock') + '</div></div>' +
     '<div class="stat"><div class="k">Sales this week</div><div class="v">' + money(wk.income) + '</div><div class="s">net ' + money(wk.net) + ' after expenses</div></div>' +
     '</div>';
   h += '<div class="row">' +
@@ -540,7 +654,8 @@ function viewSales(){
   var h = '<h2 class="view-title">Harvests &amp; Sales</h2>';
   h += tellButtonHTML();
   h += '<div class="row" style="margin-bottom:12px;"><div><button type="button" class="btn" data-act="harvest">✂️ Log a harvest</button></div>' +
-       '<div><button type="button" class="btn amber" data-act="sale">🧺 Log a sale</button></div></div>';
+       '<div><button type="button" class="btn amber" data-act="sale">🧺 Log a sale</button></div>' +
+       '<div><button type="button" class="btn ghost" data-act="pack">📦 Pack up greens</button></div></div>';
   var inv = inventory();
   var keys = Object.keys(inv).filter(function(k){ return inv[k].qty > 0; });
   h += '<h3>Harvested &amp; ready to sell</h3><div class="card">';
@@ -551,13 +666,14 @@ function viewSales(){
     h += '</table>';
   }
   h += '</div>';
+  h += readyStockHTML();
   var sales = state.sales.slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; }).slice(0,20);
   h += '<h3>Recent sales</h3><div class="card">';
   if (!sales.length) h += '<p class="empty">No sales logged yet.</p>';
   else {
     h += '<table><tr><th>Date</th><th>Sale</th><th class="num">Total</th><th></th></tr>';
     sales.forEach(function(s){
-      h += '<tr><td>' + fmtDate(s.date) + '</td><td>' + fmtQty(s.qty, s.unit) + ' ' + esc(varietyName(s.variety)) + ' (' + (s.form==='live'?'live tray':'cut') + ') → ' + esc(customerName(s.customerId)) + (s.trayIds && s.trayIds.length ? ' <span class="pill">bench · Tray ' + esc((s.trayCodes||[]).join(', ')) + '</span>' : '') + (s.note ? '<br><span class="small mut">' + esc(s.note) + '</span>' : '') + '</td>' +
+      h += '<tr><td>' + fmtDate(s.date) + '</td><td>' + fmtQty(s.qty, s.unit) + ' ' + esc(varietyName(s.variety)) + ' (' + (s.form==='live'?'live tray':'cut') + ') → ' + esc(customerName(s.customerId)) + (s.trayIds && s.trayIds.length ? ' <span class="pill">bench · Tray ' + esc((s.trayCodes||[]).join(', ')) + '</span>' : '') + (s.packDraws && s.packDraws.length ? ' <span class="pill light">🧊 from the fridge</span>' : '') + (s.note ? '<br><span class="small mut">' + esc(s.note) + '</span>' : '') + '</td>' +
         '<td class="num">' + money(s.total) + '</td>' +
         '<td class="num"><button type="button" class="del" data-act="sale-edit" data-id="' + s.id + '" aria-label="Edit sale">✏️</button>' +
         '<button type="button" class="del" data-act="sale-del" data-id="' + s.id + '" aria-label="Delete sale">🗑</button></td></tr>';
@@ -570,12 +686,60 @@ function viewSales(){
     h += '<h3>Recent harvests</h3><div class="card"><table><tr><th>Date</th><th>Harvest</th><th></th></tr>';
     harv.forEach(function(x){
       h += '<tr><td>' + fmtDate(x.date) + '</td><td>' + fmtQty(x.qty, x.unit) + ' ' + esc(varietyName(x.variety)) + ' (' + (x.form==='live'?'live tray':'cut') + ')</td>' +
-        '<td class="num"><button type="button" class="del" data-act="harvest-del" data-id="' + x.id + '" aria-label="Delete harvest">🗑</button></td></tr>';
+        '<td class="num">' + (x.form === 'cut' ? '<button type="button" class="del" data-act="pack-harvest" data-id="' + x.id + '" aria-label="Pack up this harvest">📦 Pack</button>' : '') +
+        '<button type="button" class="del" data-act="harvest-del" data-id="' + x.id + '" aria-label="Delete harvest">🗑</button></td></tr>';
     });
     h += '</table></div>';
   }
   h += customersCardHTML();
   return h;
+}
+function freshPill(f){
+  return f === 'past' ? '<span class="pill red">Past prime</span>' : f === 'soon' ? '<span class="pill soon">Sell soon</span>' : '<span class="pill ready">Fresh</span>';
+}
+/* Ready-to-Sell: the bagged-up stock in the fridge, per variety and per
+   lot, oldest first — with freshness worked out from each variety's
+   fridge life, and the tossed/composted log underneath. */
+function readyStockHTML(){
+  var lots = (state.packs||[]).filter(function(p){ return packLeft(p) > 0; })
+    .sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  var h = '<h3>🧊 Bagged &amp; in the fridge — ready to sell</h3><div class="card">';
+  if (!lots.length){
+    h += '<p class="empty">Nothing bagged up right now. Bag or box a harvest for the fridge and it lands here with its pack date — oldest sells first, and Today warns you before it goes past prime.</p>';
+  } else {
+    var byVar = {};
+    lots.forEach(function(p){ (byVar[p.variety] = byVar[p.variety] || []).push(p); });
+    h += '<table><tr><th>Variety</th><th class="num">On hand</th><th>Oldest packed</th><th>Freshness</th></tr>';
+    Object.keys(byVar).sort().forEach(function(v){
+      var vl = byVar[v], units = {};
+      vl.forEach(function(p){ units[p.pkgUnit] = (units[p.pkgUnit]||0) + packLeft(p); });
+      var unitTxt = Object.keys(units).map(function(u){ return units[u] + ' ' + u; }).join(' + ');
+      var worst = 'fresh';
+      vl.forEach(function(p){ var f = packFreshness(p); if (f === 'past') worst = 'past'; else if (f === 'soon' && worst === 'fresh') worst = 'soon'; });
+      h += '<tr><td><b>' + esc(varietyName(v)) + '</b></td><td class="num">' + esc(unitTxt) + '</td><td>' + fmtDate(vl[0].date) + ' (' + packAge(vl[0]) + 'd old)</td><td>' + freshPill(worst) + '</td></tr>';
+    });
+    h += '</table>';
+    h += '<table style="margin-top:10px;"><tr><th>Pack lot</th><th></th></tr>';
+    lots.forEach(function(p){
+      h += '<tr><td>' + esc(varietyName(p.variety)) + ' — ' + packLeft(p) + ' of ' + p.qty + ' ' + esc(p.pkgUnit) + (p.weightOz ? ' · ~' + p.weightOz + ' oz each' : '') + ' ' + freshPill(packFreshness(p)) +
+        '<br><span class="small mut">Packed ' + fmtDate(p.date) + ' · ' + packAge(p) + ' days old · ' + esc(p.location || 'Fridge') + ' · fridge life ' + shelfDays(p.variety) + ' days' + (p.note ? ' · ' + esc(p.note) : '') + '</span></td>' +
+        '<td class="num"><button type="button" class="del" data-act="pack-toss" data-id="' + p.id + '" aria-label="Toss some of this lot">🗑 Toss</button></td></tr>';
+    });
+    h += '</table>';
+  }
+  h += '<div class="row" style="margin-top:10px;"><div><button type="button" class="btn small" data-act="pack">📦 Pack up greens</button></div>' +
+       '<div><button type="button" class="btn ghost small" data-act="shelf-edit">Fridge-life settings</button></div></div>';
+  var waste = [];
+  (state.packs||[]).forEach(function(p){ (p.tossed||[]).forEach(function(x){ waste.push({variety:p.variety, pkgUnit:p.pkgUnit, qty:x.qty, date:x.date, note:x.note || ''}); }); });
+  waste.sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+  if (waste.length){
+    h += '<h4 style="margin:14px 0 6px;">Tossed / composted</h4><table><tr><th>Date</th><th>What</th></tr>';
+    waste.slice(0, 10).forEach(function(x){
+      h += '<tr><td>' + fmtDate(x.date) + '</td><td>' + x.qty + ' ' + esc(x.pkgUnit) + ' ' + esc(varietyName(x.variety)) + (x.note ? ' — ' + esc(x.note) : '') + '</td></tr>';
+    });
+    h += '</table>';
+  }
+  return h + '</div>';
 }
 function customersCardHTML(){
   var h = '<h3>Customers</h3><div class="card">';
@@ -613,7 +777,8 @@ function deleteSaleCascade(saleId){
 function recordSaleFromParts(parts){
   var sale = {id:uid('s'), customerId:parts.customerId, variety:parts.variety, form:parts.form, unit:parts.unit,
     qty:parts.qty, pricePer:parts.pricePer, total:parts.total, date:parts.date, note:parts.note||'',
-    trayIds:(parts.readyTrayIds||[]).slice(), trayCodes:[]};
+    trayIds:(parts.readyTrayIds||[]).slice(), trayCodes:[],
+    packDraws:(parts.packDraws||[]).map(function(d){ return {packId:d.packId, qty:d.qty}; })};
   (parts.readyTrayIds||[]).forEach(function(tid){
     var t = findTray(tid);
     if (t){ sale.trayCodes.push(t.code); if (t.status === 'active') t.status = 'harvested'; }
@@ -621,6 +786,7 @@ function recordSaleFromParts(parts){
   state.sales.push(sale);
   var breakdown = fmtQty(parts.qty, parts.unit) + ' ' + varietyName(parts.variety) + ' (' + (parts.form==='live' ? 'live tray' : 'cut') + ') @ ' + money(parts.pricePer) + ' → ' + customerName(parts.customerId);
   if (sale.trayCodes.length) breakdown += ' · from bench Tray ' + sale.trayCodes.join(', Tray ');
+  if (sale.packDraws.length) breakdown += ' · from the fridge: ' + packDrawSummary(sale.packDraws);
   state.money.push({id:uid('m'), date:parts.date, kind:'income', category:'Sale', amount:parts.total, note:breakdown, refId:sale.id, auto:true});
   return sale;
 }
@@ -641,6 +807,23 @@ function submitSaleDirect(p){
   save(); savedToast('sale — ' + money(p.total)); render();
   return true;
 }
+/* submitPackSaleDirect — Tell's confirm-card path for a sale out of
+   bagged fridge stock. Unlike a loose sale it never blocks on stock:
+   the draw plan was settled at parse time (oldest first), and a sale
+   bigger than the bags on hand still records — growers sell loose too.
+   Money still posts exactly once, through recordSaleFromParts. */
+function submitPackSaleDirect(p){
+  var custId = p.customerId;
+  if (!custId && p.newCustName){
+    custId = uid('c');
+    state.customers.push({id:custId, name:p.newCustName, type:'Direct', contact:'', notes:''});
+  }
+  if (!custId){ toast('That sale needs a customer.', true); return false; }
+  recordSaleFromParts({customerId:custId, variety:p.variety, form:p.form, unit:p.unit, qty:p.qty,
+    pricePer:p.pricePer, total:p.total, date:p.date || todayStr(), note:'', readyTrayIds:[], packDraws:p.packDraws || []});
+  save(); savedToast('sale — ' + money(p.total)); render();
+  return true;
+}
 function openSaleSheet(editId, prefill){
   var s = null;
   if (editId) for (var i=0;i<state.sales.length;i++) if (state.sales[i].id===editId) s = state.sales[i];
@@ -648,10 +831,30 @@ function openSaleSheet(editId, prefill){
   var inv = inventory();
   var keys = Object.keys(inv).filter(function(k){ return inv[k].qty > 0 || (s && invKey(s.variety,s.form,s.unit)===k) || (pf && invKey(pf.variety,pf.form,pf.unit)===k); });
   var prodOpts = keys.map(function(k){ var e=inv[k]; return {k:k, label: varietyName(e.variety)+' — '+(e.form==='live'?'Live tray':'Cut')+' ('+fmtQty(e.qty,e.unit)+' on hand)', variety:e.variety, form:e.form, unit:e.unit}; });
+  /* Bagged fridge stock is sellable product too — one option per
+     variety + package type, drawn oldest-first when the sale saves. */
+  var packOptByKey = {};
+  (state.packs||[]).forEach(function(p){
+    if (packLeft(p) <= 0) return;
+    var k = 'pack|' + p.variety + '|' + p.pkgUnit;
+    if (!packOptByKey[k]){
+      packOptByKey[k] = {k:k, pack:true, variety:p.variety, form:'cut', unit:p.pkgUnit,
+        label: varietyName(p.variety) + ' — Bagged ' + p.pkgUnit + ' (' + packOnHand(p.variety, p.pkgUnit) + ' in the fridge)'};
+      prodOpts.push(packOptByKey[k]);
+    }
+  });
+  if (s && s.packDraws && s.packDraws.length){
+    var sk = 'pack|' + s.variety + '|' + s.unit;
+    if (!packOptByKey[sk]){
+      var so = {k:sk, pack:true, variety:s.variety, form:'cut', unit:s.unit,
+        label: varietyName(s.variety) + ' — Bagged ' + s.unit + ' (' + (packOnHand(s.variety, s.unit) + saleDrawnQty(s)) + ' in the fridge)'};
+      packOptByKey[sk] = so; prodOpts.push(so);
+    }
+  }
   var readyLive = activeTrays().filter(function(t){ return trayStage(t)==='Ready'; });
   var initCust = s ? s.customerId : (pf ? (pf.customerId || '') : '');
   var custOpts = state.customers.map(function(c){ return '<option value="'+c.id+'"'+(initCust===c.id?' selected':'')+'>'+esc(c.name)+'</option>'; }).join('');
-  var initProdKey = s ? invKey(s.variety,s.form,s.unit) : (pf ? invKey(pf.variety,pf.form,pf.unit) : '');
+  var initProdKey = s ? (s.packDraws && s.packDraws.length ? 'pack|' + s.variety + '|' + s.unit : invKey(s.variety,s.form,s.unit)) : (pf ? invKey(pf.variety,pf.form,pf.unit) : '');
   var initReadyTray = (pf && pf.readyTrayId) ? pf.readyTrayId : (s && s.trayIds && s.trayIds.length ? s.trayIds[0] : '');
   var benchOn = !!initReadyTray;
   var body = '<label for="f-sale-cust">Customer</label><select id="f-sale-cust"><option value="">— pick a customer —</option>'+custOpts+'<option value="__new"'+(pf && pf.newCustName ? ' selected' : '')+'>➕ New customer…</option></select>' +
@@ -689,7 +892,19 @@ function openSaleSheet(editId, prefill){
       var note = document.getElementById('saleAvail'); if (!note) return;
       var useBench = bench && bench.checked;
       if (useBench){ note.textContent = 'Bench sale: saving records the sale against the tray and marks it harvested — no separate harvest step.'; return; }
-      var k = val('f-sale-prod'); var e = inv[k];
+      var k = val('f-sale-prod');
+      var pk = null; prodOpts.forEach(function(p){ if (p.k === k) pk = p; });
+      if (pk && pk.pack){
+        var onHand = packOnHand(pk.variety, pk.unit);
+        if (s && s.packDraws && s.packDraws.length && s.variety === pk.variety) onHand += saleDrawnQty(s);
+        var q2 = num(val('f-sale-qty'), 0), p2 = num(val('f-sale-price'), 0);
+        var tot2 = document.getElementById('f-sale-total');
+        if (q2 > 0 && p2 > 0 && document.activeElement !== tot2) tot2.value = Math.round(q2 * p2 * 100) / 100;
+        note.textContent = 'Bagged stock: ' + onHand + ' ' + pk.unit + ' of ' + varietyName(pk.variety) + ' in the fridge — saving takes the oldest first.' +
+          (q2 > onHand + 1e-9 ? ' Only ' + onHand + ' are bagged: the rest will count as loose greens sold unbagged.' : '');
+        return;
+      }
+      var e = inv[k];
       var availNow = e ? e.qty : 0;
       if (s && k === invKey(s.variety,s.form,s.unit)) availNow += Number(s.qty)||0;
       note.textContent = k ? ('On hand: ' + fmtQty(availNow, e ? e.unit : '')) : '';
@@ -726,6 +941,7 @@ function submitSaleFromForm(editId, prodOpts){
   if (total <= 0){ toast('Enter a price or a total.', true); return; }
   if (pricePer <= 0) pricePer = Math.round(total/qty*100)/100;
   var variety, form, unit = val('f-sale-unit');
+  var packPicked = null;
   if (useBench){
     variety = benchTray.variety; form = 'live'; unit = 'trays';
     if (qty !== readyTrayIds.length){ toast('A bench sale is one sale per tray — quantity must match the linked tray (' + readyTrayIds.length + ').', true); return; }
@@ -735,6 +951,13 @@ function submitSaleFromForm(editId, prodOpts){
     prodOpts.forEach(function(p){ if (p.k===k) picked = p; });
     if (!picked){ toast('Pick a product from your stock.', true); return; }
     variety = picked.variety; form = picked.form;
+    if (picked.pack){
+      /* Bagged stock: no loose-stock gate — the draw is planned after
+         any edit-delete below, against what's actually in the fridge.
+         Selling more than is bagged is allowed (the rest is loose). */
+      packPicked = picked;
+      unit = picked.unit;
+    } else {
     var avail = stockOf(variety, form, picked.unit);
     if (old && invKey(old.variety,old.form,old.unit) === k) avail += Number(old.qty)||0;
     var qtyInUnit = qty;
@@ -745,11 +968,13 @@ function submitSaleFromForm(editId, prodOpts){
     }
     if (qtyInUnit > avail + 1e-9){ toast('Not enough in stock — you have ' + fmtQty(avail, picked.unit) + '.', true); return; }
     qty = qtyInUnit; unit = picked.unit;
+    }
   }
   if (newCust) state.customers.push(newCust);
   if (editId) deleteSaleCascade(editId);
+  var packDraws = packPicked ? planPackDraw(variety, qty, unit) : [];
   recordSaleFromParts({customerId:custId, variety:variety, form:form, unit:unit, qty:qty, pricePer:pricePer,
-    total:total, date:val('f-sale-date') || todayStr(), note:val('f-sale-note').trim(), readyTrayIds:readyTrayIds});
+    total:total, date:val('f-sale-date') || todayStr(), note:val('f-sale-note').trim(), readyTrayIds:readyTrayIds, packDraws:packDraws});
   save(); closeSheet(); savedToast('sale — ' + money(total)); render();
 }
 function openSowSheet(batch){
@@ -845,6 +1070,96 @@ function openHarvestSheet(trayId){
     var fs = document.getElementById('f-form'), un = document.getElementById('f-unit'), qt = document.getElementById('f-qty');
     fs.addEventListener('change', function(){ if (fs.value==='live'){ un.value='trays'; qt.value='1'; } else if (un.value==='trays'){ un.value='oz'; qt.value='8'; } });
   });
+}
+function openPackSheet(harvestId){
+  var harv = null;
+  if (harvestId) for (var i=0;i<state.harvests.length;i++) if (state.harvests[i].id===harvestId) harv = state.harvests[i];
+  var initVar = harv ? harv.variety : 'radish';
+  var vOpts = VARIETIES.map(function(v){ return '<option value="'+v.id+'"'+(initVar===v.id?' selected':'')+'>'+esc(v.name)+'</option>'; }).join('');
+  var body = '<label for="f-pk-variety">Variety</label><select id="f-pk-variety"'+(harv ? ' disabled' : '')+'>'+vOpts+'</select>' +
+    (harv ? '<p class="small mut">From the ' + fmtDate(harv.date) + ' harvest (' + fmtQty(harv.qty, harv.unit) + ').</p>'
+          : '<label for="f-pk-harvest">From which harvest? (optional)</label><select id="f-pk-harvest"></select>') +
+    '<div class="row"><div><label for="f-pk-qty">Packages</label><input type="number" id="f-pk-qty" min="0" step="any" value="6"></div>' +
+    '<div><label for="f-pk-unit">Package type</label><select id="f-pk-unit"><option value="bags">bags</option><option value="clamshells">clamshells</option><option value="packs">packs</option></select></div></div>' +
+    '<label for="f-pk-weight">Weight per package, oz (optional)</label><input type="number" id="f-pk-weight" min="0" step="any" placeholder="e.g. 4 — if you weigh your bags">' +
+    '<p class="small mut" id="pkLooseNote"></p>' +
+    '<div class="row"><div><label for="f-pk-date">Pack date</label><input type="date" id="f-pk-date" value="'+todayStr()+'"></div>' +
+    '<div><label for="f-pk-loc">Stored in</label><input type="text" id="f-pk-loc" value="Fridge"></div></div>' +
+    '<label for="f-pk-note">Note (optional)</label><input type="text" id="f-pk-note" placeholder="e.g. For Saturday market">' +
+    '<p class="small mut">Bagging takes the greens out of loose stock (by weight, when you give one) so nothing counts twice. Sales take the oldest bags first.</p>';
+  openSheet(harv ? 'Pack up — ' + varietyName(harv.variety) : 'Pack up greens', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save packs', cls:'amber', onClick:function(){
+      var variety = harv ? harv.variety : val('f-pk-variety');
+      var qty = num(val('f-pk-qty'), 0);
+      if (!(qty > 0)){ toast('How many packages? Enter a number above zero.', true); return; }
+      var wgt = num(val('f-pk-weight'), 0);
+      var pkgUnit = val('f-pk-unit');
+      packUpCore({variety:variety, harvestId: harv ? harv.id : (val('f-pk-harvest') || null), qty:qty, pkgUnit:pkgUnit,
+        weightOz: wgt > 0 ? wgt : null, date: val('f-pk-date') || todayStr(),
+        location: val('f-pk-loc').trim() || 'Fridge', note: val('f-pk-note').trim()});
+      save(); closeSheet(); savedToast(qty + ' ' + pkgUnit + ' of ' + varietyName(variety) + ' bagged up'); render();
+    }}
+  ], function(){
+    var vs = document.getElementById('f-pk-variety'), hs = document.getElementById('f-pk-harvest'), note = document.getElementById('pkLooseNote');
+    function updNote(){
+      if (!note) return;
+      var v = harv ? harv.variety : vs.value;
+      var loose = stockOf(v, 'cut', 'oz');
+      note.textContent = loose > 0 ? ('Loose ' + varietyName(v) + ' in stock: ' + fmtQty(loose, 'oz') + '. Give a weight per package and bagging takes that weight out of this loose pile.') : '';
+    }
+    function fillHarvests(){
+      if (hs){
+        var v = vs.value;
+        var opts = '<option value="">— no specific harvest —</option>';
+        state.harvests.filter(function(x){ return x.variety === v && x.form === 'cut'; })
+          .slice().sort(function(a, b){ return a.date < b.date ? 1 : -1; }).slice(0, 10).forEach(function(x){
+            opts += '<option value="'+x.id+'">' + fmtDate(x.date) + ' — ' + fmtQty(x.qty, x.unit) + ' harvested</option>';
+          });
+        hs.innerHTML = opts;
+      }
+      updNote();
+    }
+    if (vs && !harv) vs.addEventListener('change', fillHarvests);
+    fillHarvests();
+  });
+}
+function openTossSheet(lotId){
+  var lot = findPack(lotId); if (!lot) return;
+  var left = packLeft(lot);
+  var body = '<p style="margin-top:0;"><b>' + esc(varietyName(lot.variety)) + '</b> — ' + left + ' ' + esc(lot.pkgUnit) + ' left, packed ' + fmtDate(lot.date) + ' (' + packAge(lot) + ' days old, stored in ' + esc(lot.location || 'Fridge') + ').</p>' +
+    '<label for="f-ts-qty">How many are you tossing?</label><input type="number" id="f-ts-qty" min="0" step="any" value="' + left + '">' +
+    '<label for="f-ts-note">Why (optional)</label><input type="text" id="f-ts-note" placeholder="e.g. Went slimy, past prime">' +
+    '<p class="small mut">Tossed stock leaves your sellable count and lands in the tossed log on the Sales page, so shrink stays honest.</p>';
+  openSheet('Toss ' + varietyName(lot.variety), body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Toss them', cls:'amber', onClick:function(){
+      var q = num(val('f-ts-qty'), 0);
+      if (!(q > 0)){ toast('Enter how many you are tossing.', true); return; }
+      if (q > packLeft(lot) + 1e-9){ toast('That lot only has ' + packLeft(lot) + ' left.', true); return; }
+      lot.tossed = lot.tossed || [];
+      lot.tossed.push({qty:q, date:todayStr(), note:val('f-ts-note').trim()});
+      save(); closeSheet(); savedToast('tossed ' + q + ' ' + lot.pkgUnit + ' of ' + varietyName(lot.variety)); render();
+    }}
+  ]);
+}
+function openShelfSheet(){
+  var body = '<p class="small" style="margin-top:0;">How many days each variety stays good bagged up in the fridge. The “Sell soon” flag starts 2 days before the limit, and “Past prime” at the limit. Changes apply right away.</p>';
+  VARIETIES.forEach(function(v){
+    body += '<div class="row"><div style="flex:2 1 0;"><label for="f-shelf-' + v.id + '">' + esc(v.name) + '</label></div>' +
+      '<div><input type="number" id="f-shelf-' + v.id + '" min="1" step="1" value="' + shelfDays(v.id) + '"></div></div>';
+  });
+  openSheet('Fridge life, by variety', body, [
+    {label:'Cancel', cls:'ghost', onClick:closeSheet},
+    {label:'Save fridge life', cls:'', onClick:function(){
+      state.shelfLife = state.shelfLife || {};
+      VARIETIES.forEach(function(v){
+        var n = Math.floor(num(val('f-shelf-' + v.id), 0));
+        if (n >= 1) state.shelfLife[v.id] = n; else delete state.shelfLife[v.id];
+      });
+      save(); closeSheet(); savedToast('fridge-life settings'); render();
+    }}
+  ]);
 }
 function openCustomerSheet(editId){
   var c = null;
@@ -974,7 +1289,8 @@ function helpHTML(){
     ['Sow a tray', 'Tap “Sow a tray” in Trays, pick the variety and the sow date, and the app works out the rest: when it should move into light and when it should be ready, from typical day-ranges for that variety. Sowing several at once? Use “Sow a batch”. If you track seed stock, sowing takes the seed out of stock for you.'],
     ['Move to light & harvest', 'New trays start in germination (dark/blackout). When a tray is ready for light, Today flags it — open Trays and tap “Move to light”. When the greens are up and ready, tap “Harvest”, choose cut or live tray, and enter how much you got. Harvested product lands in “Harvested & ready to sell”.'],
     ['Log a sale', 'In Sales, tap “Log a sale”: pick the customer (or add a new one right there), pick the product from what you have harvested, enter quantity and price. Stock goes down and the money appears in Money — once, never twice. Restaurant buying a live tray straight off the bench? The sale form can pull it from a ready tray for you.'],
-    ['Tell ' + APP_NAME, 'Tap the Tell button and say it plainly: “sowed 6 trays of radish”, “moved the broccoli to light”, “sold 2 live trays of radish to The Corner Bistro for $30”, “spent $12 on radish seed”. Tell listens in one press, shows you exactly what it heard, and only saves when you tap Save. Anything it cannot file is kept word-for-word in More → Tell notes. Tell runs on this device — it is not a cloud AI.'],
+    ['Bagged & fridge stock (Ready to sell)', 'Harvested more than you can sell loose? In Sales, tap “Pack up greens”: the variety, how many bags or clamshells, the pack date, and where they are stored (Fridge unless you say otherwise). Give a weight per package and bagging takes that weight out of your loose stock, so the same greens never count twice. The Ready-to-sell list shows what is in the fridge, oldest first, with a freshness flag worked out from each variety’s fridge life — Fresh, Sell soon (last 2 days), or Past prime. Change the days any time in Fridge-life settings. Sales take the oldest bags first, and the sale shows what it took. When packs go past prime, tap Toss on the lot: they leave your sellable count and the toss is kept in the log, so shrink stays honest. Tell can do all of it too: “bagged up 6 bags of broccoli”, “sold 2 bags of broccoli to The Corner Bistro for $12”, “tossed 3 bags of radish”.'],
+    ['Tell ' + APP_NAME, 'Tap the Tell button and say it plainly: “sowed 6 trays of radish”, “moved the broccoli to light”, “sold 2 live trays of radish to The Corner Bistro for $30”, “spent $12 on radish seed”, “bagged up 6 bags of broccoli”, “tossed 3 bags of radish”. Tell listens in one press, shows you exactly what it heard, and only saves when you tap Save. Anything it cannot file is kept word-for-word in More → Tell notes. Tell runs on this device — it is not a cloud AI.'],
     ['Customers & seed stock', 'Customers live in Sales — name, type (restaurant, farmers market, direct…), and contact. Seed stock lives at the bottom of Trays: grams on hand per variety, with a low mark you set; Today warns you before you run out mid-sow.'],
     ['Finding supplies', 'The Supplies guide (the button on Today, or Supplies in More) has the full checklist: every supply a microgreens setup needs, what it is for, what to look for, and where growers buy it at good prices — seed, trays, growing media, lights and shelving, packaging, and cleaning. Tick items off as you get them; your ticks save on this device and sync between tabs like everything else. Supplier names and sites were checked on the date shown on each entry. Prices change often, so the guide links to each supplier instead of promising a price — always confirm the price on the supplier’s own site before you buy.'],
     ['Back up your data', 'Your records live only on this device, in this browser. Use More → Export backup regularly and keep the file somewhere safe. On a new device, open this app and use Import backup to bring everything across.']
@@ -1186,7 +1502,9 @@ function loadDemo(){
   mk('sunflower', 9, 5, 30, '');
   var old = mk('radish', 10, 7, 25, '');
   old.status = 'harvested';
-  state.harvests.push({id:uid('h'), trayId:old.id, variety:'radish', form:'cut', qty:9, unit:'oz', date:addDaysStr(t, -2), note:''});
+  var demoHarv = {id:uid('h'), trayId:old.id, variety:'radish', form:'cut', qty:9, unit:'oz', date:addDaysStr(t, -2), note:''};
+  state.harvests.push(demoHarv);
+  state.packs.push({id:uid('pk'), variety:'radish', harvestId:demoHarv.id, qty:2, pkgUnit:'bags', weightOz:null, date:addDaysStr(t, -1), location:'Fridge', note:'For Saturday market', tossed:[]});
   recordSaleFromParts({customerId:bistro.id, variety:'radish', form:'cut', unit:'oz', qty:6, pricePer:3, total:18, date:addDaysStr(t, -2), note:'', readyTrayIds:[]});
   state.money.push({id:uid('m'), date:addDaysStr(t, -6), kind:'expense', category:'Seed', amount:24, note:'Radish + broccoli seed', refId:null, auto:false});
   state.money.push({id:uid('m'), date:addDaysStr(t, -3), kind:'expense', category:'Market Fees', amount:10, note:'Saturday market booth', refId:null, auto:false});
@@ -1248,6 +1566,20 @@ function printSummary(){
     keys.forEach(function(k){ var e = inv[k]; h += '<tr><td>' + esc(varietyName(e.variety)) + ' — ' + (e.form==='live'?'Live tray':'Cut') + '</td><td class="num">' + fmtQty(e.qty, e.unit) + '</td></tr>'; });
     h += '</table>';
   } else h += '<p>Nothing in stock.</p>';
+  var pkLots = (state.packs||[]).filter(function(p){ return packLeft(p) > 0; })
+    .sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+  if (pkLots.length){
+    h += '<h2>Bagged &amp; ready to sell</h2><table><tr><th>Variety</th><th class="num">On hand</th><th>Oldest packed</th></tr>';
+    var pkByVar = {};
+    pkLots.forEach(function(p){ (pkByVar[p.variety] = pkByVar[p.variety] || []).push(p); });
+    Object.keys(pkByVar).sort().forEach(function(v){
+      var vl = pkByVar[v], units = {};
+      vl.forEach(function(p){ units[p.pkgUnit] = (units[p.pkgUnit]||0) + packLeft(p); });
+      var unitTxt = Object.keys(units).map(function(u){ return units[u] + ' ' + u; }).join(' + ');
+      h += '<tr><td>' + esc(varietyName(v)) + '</td><td class="num">' + esc(unitTxt) + '</td><td>' + fmtDate(vl[0].date) + '</td></tr>';
+    });
+    h += '</table>';
+  }
   document.getElementById('printArea').innerHTML = h;
   window.print();
 }
@@ -1289,6 +1621,10 @@ function handleAct(act, id){
     });
   }
   else if (act === 'harvest') openHarvestSheet(null);
+  else if (act === 'pack') openPackSheet(null);
+  else if (act === 'pack-harvest') openPackSheet(id);
+  else if (act === 'pack-toss') openTossSheet(id);
+  else if (act === 'shelf-edit') openShelfSheet();
   else if (act === 'harvest-del'){
     confirmSheet('Delete this harvest?', '<p>The harvested amount comes back out of stock.</p>', 'Delete harvest', function(){
       state.harvests = state.harvests.filter(function(x){ return x.id !== id; });
@@ -1393,13 +1729,24 @@ function mapQtyUnit(unit){
   if (unit.indexOf('tray') === 0) return 'trays';
   if (unit === 'oz' || unit.indexOf('ounce') === 0) return 'oz';
   if (unit === 'lb' || unit === 'lbs' || unit.indexOf('pound') === 0) return 'lb';
+  if (unit.indexOf('bag') === 0) return 'bags';
+  if (unit.indexOf('clamshell') === 0) return 'clamshells';
   return 'packs';
+}
+function isPkgUnit(unit){ return unit === 'bags' || unit === 'clamshells' || unit === 'packs'; }
+/* Just the package part of a sentence: "6 bags", "10 clamshells", "a bag". */
+function parsePackQty(t){
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(bags?|clamshells?|packs?)\b/);
+  if (m) return {qty: parseFloat(m[1]), pkgUnit: mapQtyUnit(m[2])};
+  var m2 = t.match(/\b(?:a|an)\s+(bags?|clamshells?|packs?)\b/);
+  if (m2) return {qty: 1, pkgUnit: mapQtyUnit(m2[1])};
+  return null;
 }
 function parseQtyUnit(t){
   /* "half a pound" / "a half pound" -> "0.5 pound" before the number hunt. */
   t = t.replace(/\bhalf\s+(?:a\s+|an\s+)?(pounds?|lbs?|lb|ounces?|oz)\b/g, '0.5 $1')
        .replace(/\b(?:a|an)\s+half\s+(pounds?|lbs?|lb|ounces?|oz)\b/g, '0.5 $1');
-  var m = t.match(/(\d+(?:\.\d+)?)\s*(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack|grams?|g)\b/);
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack|bags?|bag|clamshells?|grams?|g)\b/);
   if (m){
     /* Grams: the app tracks weight in ounces — convert and say so on the
        confirm card (grams field on the result) instead of failing to hear
@@ -1410,7 +1757,7 @@ function parseQtyUnit(t){
     return {qty: parseFloat(m[1]), unit: mapQtyUnit(m[3]), live: !!m[2]};
   }
   /* "sold a tray of radish" — a/an counts as 1. */
-  var m2 = t.match(/\b(?:a|an)\s+(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack)\b/);
+  var m2 = t.match(/\b(?:a|an)\s+(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack|bags?|bag|clamshells?)\b/);
   if (m2) return {qty: 1, unit: mapQtyUnit(m2[2]), live: !!m2[1]};
   /* Bare tray mention ("cut the radish tray") — one tray. */
   if (/\btrays?\b/.test(t)) return {qty: 1, unit: 'trays', live: /\blive\s+trays?\b/.test(t)};
@@ -1532,6 +1879,18 @@ function parseTell(raw){
             out.problems.push('No live ' + varietyName(variety) + ' trays in stock, and no ready tray on the bench to pull from.');
           }
         }
+      } else if (isPkgUnit(unit) && packOnHand(variety) > 0){
+        /* Bagged stock exists: the sale draws it down oldest-first
+           (FIFO). More than is bagged still sells — the card says so —
+           because growers sell loose greens in bags too. With NO lots
+           on hand this branch stays out of the way and the loose-stock
+           check below decides, exactly as before. */
+        var plan = planPackDraw(variety, qty, unit);
+        var drawn = 0; plan.forEach(function(d){ drawn += d.qty; });
+        out.parts.packDraws = plan; out.packSale = true;
+        out.lines.push('From your bagged stock, oldest first: ' + packDrawSummary(plan) + '.');
+        if (qty > drawn + 1e-9)
+          out.lines.push('Only ' + drawn + ' of ' + qty + ' ' + unit + ' are bagged up — the other ' + (Math.round((qty - drawn) * 100) / 100) + ' count as loose greens sold unbagged.');
       } else {
         var avail = stockOf(variety, form, unit);
         if (qty > avail + 1e-9){
@@ -1615,6 +1974,52 @@ function parseTell(raw){
     }
     return out;
   }
+  /* Toss / compost bagged stock — checked before pack-up so "tossed the
+     packed bags" can never be read as packing more. Needs a package
+     word in the sentence; a bare "dumped it" stays a note. */
+  if (/\b(tossed|tossing|threw|throw|composted|composting|dumped)\b/.test(t) && /\b(bags?|clamshells?|packs?)\b/.test(t)){
+    out.kind = 'toss';
+    var pq0 = parsePackQty(t);
+    if (!variety) out.problems.push('Tell could not tell which variety was tossed.');
+    if (!pq0) out.problems.push('Tell could not hear how many (like “3 bags”).');
+    if (!out.problems.length){
+      if (packOnHand(variety) <= 0) out.problems.push('No bagged ' + varietyName(variety) + ' in stock to toss.');
+      else {
+        var plan0 = planPackDraw(variety, pq0.qty, pq0.pkgUnit);
+        var tot0 = 0; plan0.forEach(function(d){ tot0 += d.qty; });
+        var reason0 = '';
+        if (/\b(went bad|gone bad|slimy|spoiled|rotten|moldy|mouldy|wilted)\b/.test(t)) reason0 = 'Went bad';
+        else if (/\bpast prime\b/.test(t)) reason0 = 'Past prime';
+        out.toss = {variety:variety, plan:plan0, qty:tot0, note:reason0};
+        out.lines.push('Toss ' + tot0 + ' ' + pq0.pkgUnit + ' of ' + varietyName(variety) + ', oldest first: ' + packDrawSummary(plan0) + '. They leave your sellable stock and land in the tossed log.');
+        if (pq0.qty > tot0 + 1e-9) out.lines.push('Only ' + tot0 + ' ' + pq0.pkgUnit + ' of ' + varietyName(variety) + ' were on the books — tossing those.');
+      }
+    }
+    return out;
+  }
+  /* Pack up: bagged / packed / put up, with a package count heard. A
+     bare "put up" with no packages in the sentence is NOT this (it can
+     be a sowing) — it falls through to the near-miss below. */
+  var pqPre = parsePackQty(t);
+  var packVerb = /\b(bagged|bagging|packed|packing)\b/.test(t) || /\bput up\b/.test(t) ||
+    (/\bput\b/.test(t) && !!pqPre) || (/\bfridge\b/.test(t) && !!pqPre);
+  if (/\b(bagged|bagging|packed|packing)\b/.test(t) || (packVerb && pqPre)){
+    out.kind = 'pack';
+    if (!variety) out.problems.push('Tell could not tell which variety you packed.');
+    if (!pqPre) out.problems.push('Tell could not hear how many packages (like “6 bags”).');
+    if (!out.problems.length){
+      var wgt = null;
+      var wm = t.match(/(\d+(?:\.\d+)?)\s*(?:ounces?|oz)\s+(?:each|bags?|clamshells?|packs?)\b/) ||
+               t.match(/(?:bags?|clamshells?|packs?)\s+of\s+(\d+(?:\.\d+)?)\s*(?:ounces?|oz)\b/);
+      if (wm) wgt = parseFloat(wm[1]);
+      var loc = /\bcooler\b/.test(t) ? 'Cooler' : 'Fridge';
+      out.pack = {variety:variety, qty:pqPre.qty, pkgUnit:pqPre.pkgUnit, weightOz:wgt, date:dateHint, location:loc, harvestId:null};
+      out.lines.push('Pack up: ' + pqPre.qty + ' ' + pqPre.pkgUnit + ' of ' + varietyName(variety) + ' into the ' + loc.toLowerCase() + ', packed ' + tellDatePhrase(dateHint) + '.');
+      if (wgt) out.lines.push('At ~' + wgt + ' oz a package, that takes about ' + (Math.round(pqPre.qty * wgt * 100) / 100) + ' oz out of loose stock.');
+      out.lines.push('Fridge life for ' + varietyName(variety) + ' is ' + shelfDays(variety) + ' days — Today flags it before it goes past prime.');
+    }
+    return out;
+  }
   if (buyVerb){
     return expenseTell(out, t, raw, dateHint);
   }
@@ -1638,7 +2043,7 @@ function parseTell(raw){
 function openTellSheet(){
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var body = '<p class="small" style="margin-top:0;">Talk or type, in plain words. Try:</p>' +
-    '<p class="small mut">“planted a tray of broccoli” · “sowed 6 trays of radish” · “sold 2 live trays of broccoli to The Corner Bistro for $30” · “harvested 12 ounces of kale” · “moved the broccoli to light” · “spent $12 on radish seed”</p>' +
+    '<p class="small mut">“planted a tray of broccoli” · “sowed 6 trays of radish” · “sold 2 live trays of broccoli to The Corner Bistro for $30” · “harvested 12 ounces of kale” · “moved the broccoli to light” · “spent $12 on radish seed” · “bagged up 6 bags of broccoli” · “sold 2 bags of broccoli to The Corner Bistro for $12” · “tossed 3 bags of radish”</p>' +
     '<label for="tellText">What happened?</label><textarea id="tellText" rows="3" placeholder="Say it or type it here…"></textarea>' +
     (SR ? '' : '<p class="small warn">🎤 Voice is not available in this browser — if you opened this link inside another app, open it in Chrome for voice. Typing here works exactly the same: type it, then tap “Read it”.</p>');
   var buttons = [{label:'Cancel', cls:'ghost', onClick:closeSheet}];
@@ -1786,6 +2191,19 @@ function applyTell(p, raw){
   } else if (p.kind === 'expense'){
     state.money.push({id:uid('m'), date:p.expense.date || todayStr(), kind:'expense', category:p.expense.category, amount:p.expense.amount, note:p.expense.note || 'Logged with Tell', refId:null, auto:false});
     save(); closeSheet(); savedToast('expense — ' + money(p.expense.amount)); render();
+  } else if (p.kind === 'pack'){
+    packUpCore(p.pack);
+    save(); closeSheet(); savedToast('bagged up — ' + p.pack.qty + ' ' + p.pack.pkgUnit + ' of ' + varietyName(p.pack.variety)); render();
+  } else if (p.kind === 'toss'){
+    (p.toss.plan || []).forEach(function(d){
+      var lot = findPack(d.packId); if (!lot) return;
+      lot.tossed = lot.tossed || [];
+      lot.tossed.push({qty:d.qty, date:todayStr(), note:p.toss.note || 'Logged with Tell'});
+    });
+    save(); closeSheet(); savedToast('tossed — ' + p.toss.qty + ' of ' + varietyName(p.toss.variety)); render();
+  } else if (p.kind === 'sale' && p.packSale){
+    closeSheet();
+    submitPackSaleDirect(p.parts);
   } else if (p.kind === 'sale' && p.brokered){
     var pre = {customerId:p.parts.customerId, newCustName:p.parts.newCustName, variety:p.parts.variety, form:p.parts.form, unit:p.parts.unit,
       qty:p.parts.qty, pricePer:p.parts.pricePer, total:p.parts.total, date:p.parts.date || todayStr(), readyTrayId:p.parts.readyTrayId};
