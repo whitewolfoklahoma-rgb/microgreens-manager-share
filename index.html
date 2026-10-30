@@ -43,6 +43,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--amber); border-c
 button.btn{min-height:48px; padding:10px 18px; border:0; border-radius:9px; background:var(--green); color:#fff; font-size:16px; font-weight:700; cursor:pointer;}
 button.btn:hover{background:var(--green2);}
 button.btn.amber{background:var(--amber); color:#3a2c05;}
+button.btn.tell-live{background:var(--brand); color:#fff;}
 button.btn.ghost{background:var(--soft); color:var(--ink); border:1px solid var(--line);}
 button.btn.danger{background:var(--red);}
 button.btn.small{min-height:42px; padding:6px 12px; font-size:14px;}
@@ -148,7 +149,7 @@ a.sup-buy:hover{background:var(--soft);}
 </div>
 
 <div id="toast"></div>
-<footer class="app">Microgreens Manager v1.1 · Runs 100% offline. Your data never leaves this device — it lives in your browser's storage.</footer>
+<footer class="app">Microgreens Manager v1.2 · Runs 100% offline. Your data never leaves this device — it lives in your browser's storage.</footer>
 
 <div id="wwLegalOverlay" class="ww-legal-overlay" hidden>
   <div class="ww-legal-card" role="dialog" aria-modal="true" aria-labelledby="wwLegalTitle">
@@ -180,7 +181,7 @@ a.sup-buy:hover{background:var(--soft);}
    under one key (microgreens_v1). Offline; no accounts, no server.
    ================================================================ */
 var APP_NAME = 'Microgreens Manager';
-var APP_VERSION = '1.1';
+var APP_VERSION = '1.2';
 var TERMS_VERSION = '1.0';
 var LS_KEY = 'microgreens_v1';
 var LS_TERMS_KEY = 'microgreens_v1_terms';
@@ -313,12 +314,12 @@ function moneyInRange(fromStr, toStr){
 
 /* ---------- toast ---------- */
 var toastTimer = null;
-function toast(msg, isErr){
+function toast(msg, isErr, ms){
   var el = document.getElementById('toast');
   el.textContent = msg;
   el.className = isErr ? 'show err' : 'show';
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.className=''; }, 3200);
+  toastTimer = setTimeout(function(){ el.className=''; }, ms || 3200);
 }
 function savedToast(what){ toast('Saved ✓ — ' + what); }
 
@@ -636,7 +637,7 @@ function submitSaleDirect(p){
   }
   if (!custId){ toast('That sale needs a customer.', true); return false; }
   recordSaleFromParts({customerId:custId, variety:p.variety, form:p.form, unit:p.unit, qty:p.qty,
-    pricePer:p.pricePer, total:p.total, date:todayStr(), note:'', readyTrayIds:[]});
+    pricePer:p.pricePer, total:p.total, date:p.date || todayStr(), note:'', readyTrayIds:[]});
   save(); savedToast('sale — ' + money(p.total)); render();
   return true;
 }
@@ -1369,40 +1370,126 @@ function pushNote(text, hint){
   state.notes.push({id:uid('n'), date:todayStr(), text:text, hint:hint||''});
   save();
 }
-var NUMWORDS = {one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50};
+var NUMWORDS = {zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15, sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70, eighty:80, ninety:90};
 function digitizeWords(t){
-  return t.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty)\b/g, function(w){ return String(NUMWORDS[w]); });
+  /* Compound numbers first: "twenty five" / "twenty-five" -> "25" (the old
+     single-word pass turned it into "20 5" and every later number read 5). */
+  t = t.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-]+(one|two|three|four|five|six|seven|eight|nine)\b/g, function(m, tens, ones){ return String(NUMWORDS[tens] + NUMWORDS[ones]); });
+  t = t.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/g, function(w){ return String(NUMWORDS[w]); });
+  /* Spoken decimals: "0 point 2 5" -> "0.25", "point 5" -> "0.5". */
+  t = t.replace(/\b(\d+)\s+point\s+(\d+(?:\s+\d+)*)/g, function(m, ip, dec){ return ip + '.' + dec.replace(/\s+/g, ''); });
+  t = t.replace(/\bpoint\s+(\d+(?:\s+\d+)*)/g, function(m, dec){ return '0.' + dec.replace(/\s+/g, ''); });
+  return t;
 }
 function matchVariety(t){
-  var aliases = [['pea shoots','pea'],['pea shoot','pea'],['pea','pea'],['sunflower','sunflower'],['radish','radish'],['broccoli','broccoli'],['arugula','arugula'],['kale','kale'],['basil','basil'],['cilantro','cilantro'],['amaranth','amaranth'],['mustard','mustard']];
-  for (var i=0;i<aliases.length;i++) if (t.indexOf(aliases[i][0]) >= 0) return aliases[i][1];
+  /* Word-boundary matching (with plurals) so "pea" can't fire inside
+     "peat"/"speak" and "pea shoots" wins over plain "pea". */
+  var aliases = [['pea shoots?','pea'],['peas?','pea'],['sunflowers?','sunflower'],['radish(?:e)?s?','radish'],['broccoli','broccoli'],['arugula','arugula'],['kale','kale'],['basil','basil'],['cilantro','cilantro'],['amaranth','amaranth'],['mustard','mustard']];
+  for (var i=0;i<aliases.length;i++) if (new RegExp('\\b' + aliases[i][0] + '\\b').test(t)) return aliases[i][1];
   return null;
 }
-function titleCase(s){ return s.replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+function titleCase(s){ return s.replace(/(^|\s)(\w)/g, function(m, p, c){ return p + c.toUpperCase(); }); }
+function mapQtyUnit(unit){
+  if (unit.indexOf('tray') === 0) return 'trays';
+  if (unit === 'oz' || unit.indexOf('ounce') === 0) return 'oz';
+  if (unit === 'lb' || unit === 'lbs' || unit.indexOf('pound') === 0) return 'lb';
+  return 'packs';
+}
 function parseQtyUnit(t){
-  var m = t.match(/(\d+(?:\.\d+)?)\s*(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack)\b/);
-  if (!m) return null;
-  var unit = m[3];
-  if (unit.indexOf('tray') === 0) unit = 'trays';
-  else if (unit === 'oz' || unit.indexOf('ounce') === 0) unit = 'oz';
-  else if (unit === 'lb' || unit === 'lbs' || unit.indexOf('pound') === 0) unit = 'lb';
-  else unit = 'packs';
-  return {qty:parseFloat(m[1]), unit:unit, live:!!m[2]};
+  /* "half a pound" / "a half pound" -> "0.5 pound" before the number hunt. */
+  t = t.replace(/\bhalf\s+(?:a\s+|an\s+)?(pounds?|lbs?|lb|ounces?|oz)\b/g, '0.5 $1')
+       .replace(/\b(?:a|an)\s+half\s+(pounds?|lbs?|lb|ounces?|oz)\b/g, '0.5 $1');
+  var m = t.match(/(\d+(?:\.\d+)?)\s*(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack|grams?|g)\b/);
+  if (m){
+    /* Grams: the app tracks weight in ounces — convert and say so on the
+       confirm card (grams field on the result) instead of failing to hear
+       a quantity at all. */
+    if (m[3] === 'g' || m[3].indexOf('gram') === 0){
+      return {qty: Math.round(parseFloat(m[1]) / 28.3495 * 100) / 100, unit:'oz', live:!!m[2], grams: parseFloat(m[1])};
+    }
+    return {qty: parseFloat(m[1]), unit: mapQtyUnit(m[3]), live: !!m[2]};
+  }
+  /* "sold a tray of radish" — a/an counts as 1. */
+  var m2 = t.match(/\b(?:a|an)\s+(live\s+)?(trays?|ounces?|oz|pounds?|lbs?|lb|packs?|pack)\b/);
+  if (m2) return {qty: 1, unit: mapQtyUnit(m2[2]), live: !!m2[1]};
+  /* Bare tray mention ("cut the radish tray") — one tray. */
+  if (/\btrays?\b/.test(t)) return {qty: 1, unit: 'trays', live: /\blive\s+trays?\b/.test(t)};
+  return null;
 }
 function parseMoneyBits(t){
-  var m = t.match(/\$\s*(\d+(?:\.\d{1,2})?)/) || t.match(/(\d+(?:\.\d{1,2})?)\s*dollars?/);
-  if (!m) return null;
+  var m = t.match(/\$\s*(\d+(?:\.\d{1,2})?)/) || t.match(/(\d+(?:\.\d{1,2})?)\s*(?:dollars?|bucks)\b/);
+  if (!m){
+    var cm = t.match(/(\d+(?:\.\d+)?)\s*cents?\b/);
+    if (cm) return {amount: Math.round(parseFloat(cm[1])) / 100, each: false};
+    return null;
+  }
   var amt = parseFloat(m[1]);
   var tail = t.slice(t.indexOf(m[0]) + m[0].length, t.indexOf(m[0]) + m[0].length + 12);
-  var each = /\b(each|per)\b/.test(tail) || /\b(each|per)\b/.test(t.slice(Math.max(0, t.indexOf(m[0]) - 6), t.indexOf(m[0])));
+  var each = /\b(each|per)\b/.test(tail) || /\b(an ounce|a pound|an oz)\b/.test(tail) || /\b(each|per)\b/.test(t.slice(Math.max(0, t.indexOf(m[0]) - 6), t.indexOf(m[0])));
   return {amount:amt, each:each};
+}
+/* Relative dates Tell understands: "yesterday", "2 days ago", "tomorrow",
+   "last week". Anything else files as today. */
+function tellDateHint(t){
+  var m = t.match(/\b(\d+)\s+days?\s+ago\b/);
+  if (m) return addDaysStr(todayStr(), -parseInt(m[1], 10));
+  if (/\byesterday\b/.test(t)) return addDaysStr(todayStr(), -1);
+  if (/\btomorrow\b/.test(t)) return addDaysStr(todayStr(), 1);
+  if (/\blast week\b/.test(t)) return addDaysStr(todayStr(), -7);
+  return todayStr();
+}
+function tellDatePhrase(dateHint){
+  return dateHint === todayStr() ? 'today' : 'on ' + fmtDate(dateHint);
+}
+function expenseTell(out, t, raw, dateHint){
+  out.kind = 'expense';
+  var mb2 = parseMoneyBits(t);
+  if (!mb2){
+    /* "spent 40 on trays" — a bare amount right before on/for still counts. */
+    var bm = t.match(/(\d+(?:\.\d{1,2})?)\s+(?:on|for)\b/);
+    if (bm) mb2 = {amount: parseFloat(bm[1]), each: false};
+  }
+  if (!mb2) out.problems.push('Tell could not hear an amount (like “$12”).');
+  else {
+    var cat = 'Other Expense';
+    if (t.indexOf('seed') >= 0) cat = 'Seed';
+    else if (t.indexOf('packag') >= 0) cat = 'Packaging';
+    else if (t.indexOf('tray') >= 0) cat = 'Trays & Supplies';
+    else if (t.indexOf('market') >= 0 || t.indexOf('booth') >= 0 || t.indexOf('fee') >= 0) cat = 'Market Fees';
+    /* The note is sliced out of the RAW words at the raw string's own
+       " on " — slicing raw at an index taken from the normalized text
+       (padded, digitized) ate the note's first letters ("adish seed"). */
+    var rawLow = String(raw).toLowerCase();
+    var onIdx = rawLow.indexOf(' on ');
+    var noteTxt = onIdx >= 0 ? String(raw).slice(onIdx + 4).trim() : '';
+    out.expense = {amount:mb2.amount, category:cat, note:noteTxt, date:dateHint};
+    out.lines.push('Expense: ' + money(mb2.amount) + ' — ' + cat + (noteTxt ? ' (' + noteTxt + ')' : '') + ', ' + tellDatePhrase(dateHint) + '.');
+  }
+  return out;
 }
 function parseTell(raw){
   var t = digitizeWords(' ' + String(raw||'').toLowerCase().replace(/(\d)\.(\d)/g, '$1\u0001$2').replace(/[.,!?]/g, ' ').replace(/\u0001/g, '.') + ' ');
   var out = {kind:'note', lines:[], problems:[], raw:raw};
   var variety = matchVariety(t);
-  if (/\bsold\b/.test(t) || /\bsell\b/.test(t)){
+  var dateHint = tellDateHint(t);
+  out.date = dateHint;
+  var saleStrong = /\b(sold|sell|sells|selling)\b/.test(t);
+  var saleVerb = saleStrong || /\bsale\b/.test(t);
+  var buyVerb = /\b(bought|paid|spent|buy|purchased)\b/.test(t);
+  /* Buying words + a price = an expense, even when the goods are seeds or
+     trays ("bought trays on sale for $40", "bought seed for $9" — neither
+     is a sowing or a sale). Checked before every other intent so the
+     widened vocabularies can't hijack a purchase; a strong sale verb
+     (sold/sell) still wins over it. */
+  if (buyVerb && !saleStrong && parseMoneyBits(t)){
+    return expenseTell(out, t, raw, dateHint);
+  }
+  /* Near-miss sale: variety + price + "to <buyer>" are all there, only the
+     verb is missing — build the sale and flag the guess on the card. */
+  var saleGuess = !saleVerb && !!variety && !!parseMoneyBits(t) && t.indexOf(' to ') >= 0;
+  if (saleVerb || saleGuess){
     out.kind = 'sale';
+    if (saleGuess){ out.guessed = true; out.lines.push('Tell didn’t catch a verb — guessing this is a SALE. Check it before saving.'); }
     var qu = parseQtyUnit(t), mb = parseMoneyBits(t);
     if (!variety) out.problems.push('Tell could not tell which variety was sold.');
     if (!qu) out.problems.push('Tell could not hear a quantity (like “2 trays” or “8 ounces”).');
@@ -1413,6 +1500,10 @@ function parseTell(raw){
       var rest = t.slice(toIdx + 4);
       var forIdx = rest.indexOf(' for ');
       custName = (forIdx >= 0 ? rest.slice(0, forIdx) : rest).trim();
+      /* "…to The Corner Bistro at $2 an ounce": a price tail is not part of
+         the name. Cut at " at " only when a price actually follows it. */
+      var atM = custName.match(/ at (?=\$|\d)/);
+      if (atM) custName = custName.slice(0, atM.index).trim();
       if (custName) custName = titleCase(custName);
     }
     if (!custName) out.problems.push('Tell could not hear who bought it (try “…to The Corner Bistro”).');
@@ -1425,9 +1516,10 @@ function parseTell(raw){
       else { total = mb.amount; pricePer = Math.round(total / qty * 100) / 100; }
       var cust = null;
       state.customers.forEach(function(c){ if (c.name.toLowerCase() === custName.toLowerCase()) cust = c; });
-      out.parts = {customerId: cust ? cust.id : null, newCustName: cust ? null : custName, variety:variety, form:form, unit:unit, qty:qty, pricePer:pricePer, total:total};
+      out.parts = {customerId: cust ? cust.id : null, newCustName: cust ? null : custName, variety:variety, form:form, unit:unit, qty:qty, pricePer:pricePer, total:total, date:dateHint};
       out.lines.push('Sale: ' + fmtQty(qty, unit) + ' ' + varietyName(variety) + ' (' + (form==='live' ? 'live tray' : 'cut') + ') to ' + custName + (cust ? '' : ' (new customer)'));
       out.lines.push('Total ' + money(total) + ' (' + money(pricePer) + ' each) — posts to Money once, as always.');
+      if (qu.grams) out.lines.push('Counted ' + qu.grams + ' g as ' + fmtQty(qty, unit) + ' — the app tracks weight in ounces.');
       if (form === 'live' && unit === 'trays'){
         var stockLive = stockOf(variety, 'live', 'trays');
         if (qty > stockLive){
@@ -1452,26 +1544,62 @@ function parseTell(raw){
     }
     return out;
   }
-  if (/\bsow/.test(t)){
+  /* Move-to-light comes before harvest: "took/put the tray to light" is a
+     move, not a harvest. "uncovered" means the same thing with no "light"
+     word in the sentence at all. */
+  if (/\buncover/.test(t) || (t.indexOf('light') >= 0 && /\b(moved|move|moving|put|into|to|took|take|bring|brought)\b/.test(t))){
+    out.kind = 'light';
+    var codeL = String(raw).match(/tray\s*(?:t-?)?(\d+)/i);
+    if (codeL){
+      var wantCode = 't-' + codeL[1];
+      var ct = null;
+      state.trays.forEach(function(tr){ if (tr.code.toLowerCase() === wantCode) ct = tr; });
+      if (!ct || ct.status !== 'active') out.problems.push('There is no growing tray ' + wantCode.toUpperCase() + ' to move.');
+      else if (ct.lightDate) out.problems.push('Tray ' + ct.code + ' is already in the light (moved ' + fmtDate(ct.lightDate) + ').');
+      else {
+        out.light = {trayId:ct.id};
+        out.lines.push('Move Tray ' + ct.code + ' (' + varietyName(ct.variety) + ', sowed ' + fmtDate(ct.sowDate) + ') to light, ' + tellDatePhrase(dateHint) + '.');
+      }
+      return out;
+    }
+    var cands2 = activeTrays().filter(function(tr){ return !tr.lightDate && (!variety || tr.variety === variety); })
+      .sort(function(a,b){ return a.sowDate < b.sowDate ? -1 : 1; });
+    if (!cands2.length) out.problems.push('No covered tray' + (variety ? ' of ' + varietyName(variety) : '') + ' is waiting for light.');
+    else {
+      out.light = {trayId:cands2[0].id};
+      out.lines.push('Move Tray ' + cands2[0].code + ' (' + varietyName(cands2[0].variety) + ', sowed ' + fmtDate(cands2[0].sowDate) + ') to light, ' + tellDatePhrase(dateHint) + '.');
+      if (cands2.length > 1) out.lines.push('(' + cands2.length + ' covered trays match — Tell picked the oldest. Use Trays to move a different one.)');
+    }
+    return out;
+  }
+  /* Sow: past-tense and plain-words forms are the strong signal ("planted",
+     "seeded", "started"); bare sow/plant/seed/start or "put in" need a tray
+     in the sentence so stray mentions ("the seed sprouted") stay notes. */
+  var sowStrong = /\b(sowed|sowing|planted|planting|seeded|seeding|started|starting)\b/.test(t);
+  var sowWeak = /\b(sow|plant|seed|start)\b/.test(t) || /\bput in\b/.test(t);
+  if (sowStrong || (sowWeak && /\btrays?\b/.test(t))){
     out.kind = 'sow';
     var mq = t.match(/(\d+)\s*trays?/);
     var count = mq ? parseInt(mq[1], 10) : 1;
     if (!variety){ out.problems.push('Tell could not tell which variety you sowed.'); return out; }
     var v = varietyById(variety);
-    out.sow = {variety:variety, count:count, seedG: v ? v.seedG : 0};
-    out.lines.push('Sow ' + count + (count === 1 ? ' tray' : ' trays') + ' of ' + varietyName(variety) + ', today.');
+    out.sow = {variety:variety, count:count, seedG: v ? v.seedG : 0, date:dateHint};
+    out.lines.push('Sow ' + count + (count === 1 ? ' tray' : ' trays') + ' of ' + varietyName(variety) + ', ' + tellDatePhrase(dateHint) + '.');
     out.lines.push('Seed: the typical ' + (v ? v.seedG : 0) + ' g per tray, taken out of seed stock if you track it. Edit a tray later if you used a different amount.');
     return out;
   }
-  if (/\bharvest/.test(t)){
+  if (/\b(harvest|harvested|harvesting|picked|picking|cut|took|gathered)\b/.test(t)){
     out.kind = 'harvest';
     var qu2 = parseQtyUnit(t);
+    /* A named tray decides the variety — "harvested 14 ounces from tray 3"
+       must not fail for leaving the variety word out. */
+    var codeM = String(raw).match(/tray\s*(?:t-?)?(\d+)/i);
+    var tray = null;
+    if (codeM) state.trays.forEach(function(tr){ if (tr.code.toLowerCase() === ('t-' + codeM[1])) tray = tr; });
+    if (tray && !variety) variety = tray.variety;
     if (!qu2) out.problems.push('Tell could not hear an amount (like “12 ounces”).');
     if (!variety) out.problems.push('Tell could not tell which variety was harvested.');
     if (!out.problems.length){
-      var codeM = String(raw).match(/tray\s*(t-?\d+)/i);
-      var tray = null;
-      if (codeM) state.trays.forEach(function(tr){ if (tr.code.toLowerCase() === ('T-' + codeM[1].replace(/^t-?/i, ''))) tray = tr; });
       if (!tray){
         var cands = activeTrays().filter(function(tr){ return tr.variety === variety; })
           .sort(function(a,b){ return trayStage(b) === 'Ready' ? 1 : trayStage(a) === 'Ready' ? -1 : a.sowDate < b.sowDate ? -1 : 1; });
@@ -1480,39 +1608,28 @@ function parseTell(raw){
       if (!tray || tray.status !== 'active') out.problems.push('No growing ' + varietyName(variety) + ' tray to harvest.');
       else {
         out.harvest = {trayId:tray.id, variety:variety, form: qu2.unit === 'trays' ? 'live' : 'cut', qty:qu2.qty, unit:qu2.unit};
-        out.lines.push('Harvest Tray ' + tray.code + ' (' + varietyName(variety) + '): ' + fmtQty(qu2.qty, qu2.unit) + ', ' + (out.harvest.form === 'live' ? 'live tray' : 'cut') + '.');
+        out.lines.push('Harvest Tray ' + tray.code + ' (' + varietyName(variety) + '): ' + fmtQty(qu2.qty, qu2.unit) + ', ' + (out.harvest.form === 'live' ? 'live tray' : 'cut') + ', ' + tellDatePhrase(dateHint) + '.');
+        if (qu2.grams) out.lines.push('Counted ' + qu2.grams + ' g as ' + fmtQty(qu2.qty, qu2.unit) + ' — the app tracks weight in ounces.');
         out.lines.push('The tray is marked harvested and the greens go into stock.');
       }
     }
     return out;
   }
-  if (t.indexOf('light') >= 0 && /\b(moved|move|put|into|to)\b/.test(t)){
-    out.kind = 'light';
-    var cands2 = activeTrays().filter(function(tr){ return !tr.lightDate && (!variety || tr.variety === variety); })
-      .sort(function(a,b){ return a.sowDate < b.sowDate ? -1 : 1; });
-    if (!cands2.length) out.problems.push('No covered tray' + (variety ? ' of ' + varietyName(variety) : '') + ' is waiting for light.');
-    else {
-      out.light = {trayId:cands2[0].id};
-      out.lines.push('Move Tray ' + cands2[0].code + ' (' + varietyName(cands2[0].variety) + ', sowed ' + fmtDate(cands2[0].sowDate) + ') to light, today.');
-      if (cands2.length > 1) out.lines.push('(' + cands2.length + ' covered trays match — Tell picked the oldest. Use Trays to move a different one.)');
-    }
-    return out;
+  if (buyVerb){
+    return expenseTell(out, t, raw, dateHint);
   }
-  if (/\b(spent|paid|bought)\b/.test(t)){
-    out.kind = 'expense';
-    var mb2 = parseMoneyBits(t);
-    if (!mb2) out.problems.push('Tell could not hear an amount (like “$12”).');
-    else {
-      var cat = 'Other Expense';
-      if (t.indexOf('seed') >= 0) cat = 'Seed';
-      else if (t.indexOf('packag') >= 0) cat = 'Packaging';
-      else if (t.indexOf('tray') >= 0) cat = 'Trays & Supplies';
-      else if (t.indexOf('market') >= 0 || t.indexOf('booth') >= 0 || t.indexOf('fee') >= 0) cat = 'Market Fees';
-      var onIdx = t.indexOf(' on ');
-      var noteTxt = onIdx >= 0 ? String(raw).slice(onIdx + 4).trim() : '';
-      out.expense = {amount:mb2.amount, category:cat, note:noteTxt};
-      out.lines.push('Expense: ' + money(mb2.amount) + ' — ' + cat + (noteTxt ? ' (' + noteTxt + ')' : '') + ', today.');
-    }
+  /* Near-miss: a variety and a tray/quantity were understood but no verb
+     was — pre-fill the likeliest entry (a sowing) and let the grower
+     confirm or correct it on the card, instead of dead-ending. */
+  if (variety && (parseQtyUnit(t) || /\btrays?\b/.test(t))){
+    out.kind = 'sow'; out.guessed = true;
+    var mq2 = t.match(/(\d+)\s*trays?/);
+    var count2 = mq2 ? parseInt(mq2[1], 10) : 1;
+    var v2 = varietyById(variety);
+    out.sow = {variety:variety, count:count2, seedG: v2 ? v2.seedG : 0, date:dateHint};
+    out.lines.push('Tell didn’t catch a verb — guessing you SOWED these. Check before saving; if that’s wrong, go back and say it with the verb (planted, sold, harvested…).');
+    out.lines.push('Sow ' + count2 + (count2 === 1 ? ' tray' : ' trays') + ' of ' + varietyName(variety) + ', ' + tellDatePhrase(dateHint) + '.');
+    out.lines.push('Seed: the typical ' + (v2 ? v2.seedG : 0) + ' g per tray, taken out of seed stock if you track it. Edit a tray later if you used a different amount.');
     return out;
   }
   out.problems.push('Tell could not file that one — it is kept below word-for-word as a note.');
@@ -1521,41 +1638,123 @@ function parseTell(raw){
 function openTellSheet(){
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var body = '<p class="small" style="margin-top:0;">Talk or type, in plain words. Try:</p>' +
-    '<p class="small mut">“sowed 6 trays of radish” · “sold 2 live trays of broccoli to The Corner Bistro for $30” · “harvested 12 ounces of kale” · “moved the broccoli to light” · “spent $12 on radish seed”</p>' +
+    '<p class="small mut">“planted a tray of broccoli” · “sowed 6 trays of radish” · “sold 2 live trays of broccoli to The Corner Bistro for $30” · “harvested 12 ounces of kale” · “moved the broccoli to light” · “spent $12 on radish seed”</p>' +
     '<label for="tellText">What happened?</label><textarea id="tellText" rows="3" placeholder="Say it or type it here…"></textarea>' +
-    (SR ? '' : '<p class="small mut">🎤 Voice is not available in this browser — typing here works exactly the same. Voice works in Chrome/Android and the Play edition.</p>');
-  openSheet('Tell ' + APP_NAME, body, [
-    {label:'Cancel', cls:'ghost', onClick:closeSheet},
-    {label:'🎤 Listen', cls:'', onClick:function(){ startTellListen(); }},
-    {label:'Read it →', cls:'amber', onClick:function(){
-      var txt = val('tellText').trim();
-      if (!txt){ toast('Say or type something first.', true); return; }
-      tellConfirm(parseTell(txt), txt);
-    }}
-  ]);
+    (SR ? '' : '<p class="small warn">🎤 Voice is not available in this browser — if you opened this link inside another app, open it in Chrome for voice. Typing here works exactly the same: type it, then tap “Read it”.</p>');
+  var buttons = [{label:'Cancel', cls:'ghost', onClick:closeSheet}];
+  if (SR) buttons.push({label:'🎤 Listen', cls:'', id:'tellListenBtn', onClick:function(){ startTellListen(); }});
+  buttons.push({label:'Read it →', cls:'amber', onClick:function(){
+    var txt = val('tellText').trim();
+    if (!txt){ toast('Say or type something first.', true); return; }
+    tellConfirm(parseTell(txt), txt);
+  }});
+  openSheet('Tell ' + APP_NAME, body, buttons);
+}
+/* ---- Tell voice, hardened the ForgeFit way: recognition NEVER fails
+   silently. Every error becomes a plain-words toast saying what happened
+   and what to do; the Listen button always returns to idle; a watchdog
+   unsticks a hung session; a mic-permission probe runs first so a blocked
+   mic explains itself instead of looking broken. ---- */
+var TELL_WATCHDOG_MS = 12000;
+function tellErrorMessage(code){
+  switch (code){
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'The mic is blocked for this app. Tap the lock / site-settings icon in the address bar, allow Microphone, then try again. Or just type it below — typed Tell works the same.';
+    case 'no-speech':
+      return 'Didn’t hear anything — tap 🎤 Listen and try again, a little closer to the phone. Or type it below.';
+    case 'audio-capture':
+      return 'No microphone was found on this device. You can type it below instead — typed Tell works the same.';
+    case 'network':
+      return 'Voice needs the internet for this — check your connection and try again. Or type it below; typed Tell works offline.';
+    case 'aborted':
+      return 'Listening stopped. Tap 🎤 Listen to try again, or type it below.';
+    case 'language-not-supported':
+      return 'Voice is not available in this language here — type it below instead; typed Tell works the same.';
+    default:
+      return 'Voice hit a snag (' + (code || 'unknown') + '). You can type it below instead — typed Tell works the same.';
+  }
+}
+var tellProbeState = 'unknown', tellProbePromise = null;
+function tellMicProbe(){
+  if (tellProbeState !== 'unknown') return Promise.resolve(tellProbeState);
+  if (tellProbePromise) return tellProbePromise;
+  var md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia){ tellProbeState = 'unknown'; return Promise.resolve('unknown'); }
+  tellProbePromise = new Promise(function(resolve){
+    var done = false;
+    var timer = setTimeout(function(){ if (!done){ done = true; resolve('unknown'); } }, 4000);
+    md.getUserMedia({audio:true}).then(function(stream){
+      if (done) return; done = true; clearTimeout(timer);
+      try { stream.getTracks().forEach(function(tr){ tr.stop(); }); } catch (e) {}
+      tellProbeState = 'ok'; resolve('ok');
+    }).catch(function(){
+      if (done) return; done = true; clearTimeout(timer);
+      tellProbeState = 'blocked'; resolve('blocked');
+    });
+  });
+  return tellProbePromise;
 }
 var tellRec = null;
 function startTellListen(){
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var ta = document.getElementById('tellText');
-  if (!SR){ toast('Voice is not available in this browser — typing works the same.', true); return; }
-  if (tellRec){ try { tellRec.stop(); } catch(e){} tellRec = null; return; }
-  try {
-    tellRec = new SR();
-    tellRec.lang = 'en-US'; tellRec.interimResults = true; tellRec.continuous = false;
-    tellRec.onresult = function(ev){
+  var btn = document.getElementById('tellListenBtn');
+  if (!SR){ toast('This browser can’t do voice — if you opened this link inside another app, open it in Chrome instead. Typing works the same: type below and tap “Read it”.', true, 7000); return; }
+  if (tellRec){ tellRec._userStop = true; try { tellRec.stop(); } catch(e){} return; }
+  var homeLabel = btn ? btn.textContent : '';
+  var gotText = false, errShown = false, watchdog = null, finished = false;
+  function resetBtn(){ if (btn){ btn.textContent = homeLabel; btn.classList.remove('tell-live'); } }
+  function finish(){
+    if (finished) return; finished = true;
+    if (watchdog){ clearTimeout(watchdog); watchdog = null; }
+    if (sheetCleanup === quietStop) sheetCleanup = null;
+    tellRec = null;
+    resetBtn();
+  }
+  function quietStop(){ if (tellRec){ tellRec._userStop = true; try { tellRec.stop(); } catch(e){} } finish(); }
+  sheetCleanup = quietStop;
+  tellMicProbe().then(function(probe){
+    if (finished) return;
+    if (probe === 'blocked'){ toast(tellErrorMessage('not-allowed'), true, 7000); finish(); return; }
+    var rec = null;
+    try { rec = new SR(); } catch (e) { toast('Voice could not start in this browser — type it below instead; typed Tell works the same.', true, 6000); finish(); return; }
+    tellRec = rec;
+    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+    rec.onresult = function(ev){
       var finalTxt = '', interim = '';
-      for (var i=0;i<ev.results.length;i++){
-        if (ev.results[i].isFinal) finalTxt += ev.results[i][0].transcript;
-        else interim += ev.results[i][0].transcript;
-      }
-      if (ta) ta.value = (finalTxt + interim).trim();
+      try {
+        for (var i=0;i<ev.results.length;i++){
+          var r = ev.results[i], alt = r && r[0];
+          if (!alt || !alt.transcript) continue;
+          if (r.isFinal) finalTxt += alt.transcript; else interim += alt.transcript;
+        }
+      } catch (e) { return; }
+      var heard = (finalTxt + interim).trim();
+      if (heard){ gotText = true; if (ta) ta.value = heard; }
     };
-    tellRec.onerror = function(ev){ tellRec = null; if (ev.error !== 'aborted') toast('Voice hiccup (' + ev.error + ') — typing works too.', true); };
-    tellRec.onend = function(){ tellRec = null; };
-    tellRec.start();
-    toast('Listening… say it plainly, then tap “Read it”.');
-  } catch(e){ tellRec = null; toast('Voice could not start here — typing works the same.', true); }
+    rec.onerror = function(ev){
+      var code = ev && ev.error ? String(ev.error) : '';
+      if (code === 'aborted' && rec._userStop) return;
+      errShown = true;
+      toast(tellErrorMessage(code), true, code === 'not-allowed' ? 7000 : 5000);
+    };
+    rec.onend = function(){
+      var missed = !gotText && !errShown && !rec._userStop;
+      finish();
+      if (missed) toast('Didn’t catch that — tap 🎤 Listen and try again, or type it below.', false, 3500);
+      else if (gotText) toast('Got it — check the words, then tap “Read it”.');
+    };
+    if (btn){ btn.textContent = '◉ Listening… tap to stop'; btn.classList.add('tell-live'); }
+    try { rec.start(); }
+    catch (e) { toast('Voice could not start — type it below instead; typed Tell works the same.', true, 5000); finish(); return; }
+    watchdog = setTimeout(function(){
+      if (finished) return;
+      if (!gotText) toast('Listening timed out — tap 🎤 Listen to try again, or type it below.', true, 5000);
+      if (tellRec){ tellRec._userStop = true; try { tellRec.stop(); } catch(e){} }
+      finish();
+    }, TELL_WATCHDOG_MS);
+  });
 }
 function tellConfirm(parsed, raw){
   var lines = parsed.lines.map(function(l){ return '<p style="margin:6px 0;">✓ ' + esc(l) + '</p>'; }).join('');
@@ -1573,23 +1772,23 @@ function tellConfirm(parsed, raw){
 }
 function applyTell(p, raw){
   if (p.kind === 'sow'){
-    var err = sowTraysCore(p.sow.variety, p.sow.count, p.sow.seedG);
+    var err = sowTraysCore(p.sow.variety, p.sow.count, p.sow.seedG, p.sow.date);
     if (err){ toast(err, true); return; }
     save(); closeSheet(); savedToast(p.sow.count + (p.sow.count === 1 ? ' tray sown' : ' trays sown')); render();
   } else if (p.kind === 'light'){
     var t = findTray(p.light.trayId); if (!t){ toast('That tray is gone.', true); return; }
-    t.lightDate = todayStr(); save(); closeSheet(); savedToast('Tray ' + t.code + ' moved to light'); render();
+    t.lightDate = p.date || todayStr(); save(); closeSheet(); savedToast('Tray ' + t.code + ' moved to light'); render();
   } else if (p.kind === 'harvest'){
     var t2 = findTray(p.harvest.trayId); if (!t2){ toast('That tray is gone.', true); return; }
-    state.harvests.push({id:uid('h'), trayId:t2.id, variety:p.harvest.variety, form:p.harvest.form, qty:p.harvest.qty, unit:p.harvest.unit, date:todayStr(), note:'Logged with Tell'});
+    state.harvests.push({id:uid('h'), trayId:t2.id, variety:p.harvest.variety, form:p.harvest.form, qty:p.harvest.qty, unit:p.harvest.unit, date:p.date || todayStr(), note:'Logged with Tell'});
     t2.status = 'harvested';
     save(); closeSheet(); savedToast('harvest logged'); render();
   } else if (p.kind === 'expense'){
-    state.money.push({id:uid('m'), date:todayStr(), kind:'expense', category:p.expense.category, amount:p.expense.amount, note:p.expense.note || 'Logged with Tell', refId:null, auto:false});
+    state.money.push({id:uid('m'), date:p.expense.date || todayStr(), kind:'expense', category:p.expense.category, amount:p.expense.amount, note:p.expense.note || 'Logged with Tell', refId:null, auto:false});
     save(); closeSheet(); savedToast('expense — ' + money(p.expense.amount)); render();
   } else if (p.kind === 'sale' && p.brokered){
     var pre = {customerId:p.parts.customerId, newCustName:p.parts.newCustName, variety:p.parts.variety, form:p.parts.form, unit:p.parts.unit,
-      qty:p.parts.qty, pricePer:p.parts.pricePer, total:p.parts.total, date:todayStr(), readyTrayId:p.parts.readyTrayId};
+      qty:p.parts.qty, pricePer:p.parts.pricePer, total:p.parts.total, date:p.parts.date || todayStr(), readyTrayId:p.parts.readyTrayId};
     closeSheet();
     setTimeout(function(){ openSaleSheet(null, pre); }, 60);
   } else if (p.kind === 'sale'){
@@ -1597,7 +1796,7 @@ function applyTell(p, raw){
     submitSaleDirect(p.parts);
   }
 }
-function sowTraysCore(variety, count, seedG){
+function sowTraysCore(variety, count, seedG, dateStr){
   var row = null;
   for (var i=0;i<state.seeds.length;i++) if (state.seeds[i].variety === variety) row = state.seeds[i];
   if (row && seedG > 0){
@@ -1607,7 +1806,7 @@ function sowTraysCore(variety, count, seedG){
   }
   for (var i=0;i<count;i++){
     state.seq = (state.seq||0)+1;
-    state.trays.push({id:uid('t'), code:'T-' + state.seq, variety:variety, sowDate:todayStr(), seedG:seedG, traySize:'', lightDate:'', readyFlag:false, status:'active', note:''});
+    state.trays.push({id:uid('t'), code:'T-' + state.seq, variety:variety, sowDate:dateStr || todayStr(), seedG:seedG, traySize:'', lightDate:'', readyFlag:false, status:'active', note:''});
   }
   return null;
 }
@@ -1714,6 +1913,8 @@ initTerms();
   var FALLBACK_MSG = "Voice isn't available on this device/browser — typing works as always";
   var MISSED_MSG = "Didn't catch that — try again or type it";
   var BLOCKED_MSG = "Microphone is blocked — typing works as always. Check the browser's mic permission if you want voice.";
+  var NETWORK_MSG = "Voice needs an internet connection for this — check your connection and try again, or type it.";
+  var NOMIC_MSG = "No microphone was found on this device — typing works as always.";
 
   /* ---- styles (self-injected; dictation-snippet.css holds the same rules) ---- */
   var CSS = [
@@ -1842,7 +2043,9 @@ initTerms();
       var interim = "", finalT = "";
       for (var i = ev.resultIndex; i < ev.results.length; i++) {
         var r = ev.results[i];
-        if (r.isFinal) finalT += r[0].transcript; else interim += r[0].transcript;
+        var alt = r && r[0];
+        if (!alt || !alt.transcript) continue;
+        if (r.isFinal) finalT += alt.transcript; else interim += alt.transcript;
       }
       if (finalT) { session.finalText = joinText(session.finalText, finalT.trim()); session.gotResult = true; }
       var shown = joinText(session.finalText, interim.trim());
@@ -1851,11 +2054,18 @@ initTerms();
     };
     rec.onerror = function (ev) {
       if (session.done) return;
+      var code = ev && ev.error ? String(ev.error) : "";
+      /* 'aborted' fires on some Android builds when the user taps stop —
+         if words were already captured, keep them: onend files them. */
+      if (code === "aborted" && session.gotResult) return;
       session.done = true;
       field.value = session.base;
       cleanup(session);
-      if (ev && (ev.error === "not-allowed" || ev.error === "service-not-allowed")) say(BLOCKED_MSG, 6500);
-      else if (ev && ev.error === "not-supported") say(FALLBACK_MSG, 6000);
+      if (code === "not-allowed" || code === "service-not-allowed") say(BLOCKED_MSG, 6500);
+      else if (code === "not-supported" || code === "language-not-supported") say(FALLBACK_MSG, 6000);
+      else if (code === "network") say(NETWORK_MSG, 6000);
+      else if (code === "audio-capture") say(NOMIC_MSG, 6000);
+      else if (code === "aborted") say("Listening stopped — nothing was changed.", 4000);
       else say(MISSED_MSG, 5000);
     };
     rec.onend = function () {
