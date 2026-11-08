@@ -182,7 +182,7 @@ a.sup-buy:hover{background:var(--soft);}
    under one key (microgreens_v1). Offline; no accounts, no server.
    ================================================================ */
 var APP_NAME = 'Microgreens Manager';
-var APP_VERSION = '1.3';
+var APP_VERSION = '1.3.1';
 var TERMS_VERSION = '1.0';
 var LS_KEY = 'microgreens_v1';
 var LS_TERMS_KEY = 'microgreens_v1_terms';
@@ -2417,10 +2417,43 @@ initTerms();
       var lab = document.querySelector('label[for="' + f.id + '"]');
       if (lab) name = lab.textContent;
     }
+    if (!name && f.closest) {
+      var wrapLab = f.closest("label");
+      if (wrapLab) name = wrapLab.textContent;
+    }
+    if (!name && f.closest) {
+      var td = f.closest("td");
+      if (td && td.parentNode) {
+        var cellIdx = 0, sib = td;
+        while ((sib = sib.previousElementSibling)) cellIdx++;
+        var tbl = f.closest("table");
+        var hrow = tbl ? tbl.querySelector("tr") : null;
+        var hcell = hrow ? hrow.children[cellIdx] : null;
+        if (hcell && hcell.tagName === "TH" && hcell.textContent && hcell.textContent.trim()) name = hcell.textContent;
+      }
+    }
     if (!name) {
-      var prev = f.closest ? f.closest("div") : null;
-      var l2 = prev ? prev.querySelector("label") : null;
-      if (l2) name = l2.textContent;
+      var node = f.parentNode, depth = 0;
+      while (node && depth < 4 && !name) {
+        if (node.querySelectorAll) {
+          var labs = node.querySelectorAll("label");
+          if (labs.length) {
+            var fields = 0, all = node.querySelectorAll("input, textarea");
+            for (var i = 0; i < all.length; i++) {
+              var t = (all[i].getAttribute("type") || "text").toLowerCase();
+              if (all[i].tagName === "TEXTAREA" || t === "text" || t === "number") fields++;
+            }
+            if (fields === 1) name = labs[0].textContent;
+            else {
+              var pv = f.previousElementSibling;
+              if ((!pv || pv.tagName !== "LABEL") && f.parentNode) pv = f.parentNode.previousElementSibling;
+              if (pv && pv.tagName === "LABEL") name = pv.textContent;
+            }
+            if (!name) break;
+          }
+        }
+        node = node.parentNode; depth++;
+      }
     }
     if (!name) name = f.getAttribute("placeholder") || f.getAttribute("name") || "field";
     return String(name).replace(/\s+/g, " ").trim().slice(0, 60) || "field";
