@@ -130,12 +130,64 @@ a.sup-buy:hover{background:var(--soft);}
 .ww-legal-check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:15px;line-height:1.4;cursor:pointer;text-align:left}
 .ww-legal-check input{width:22px;height:22px;min-width:22px;margin-top:1px;cursor:pointer}
 [hidden]{display:none !important}
+/* ===== Microgreens Manager v1.4.0: modern app-look redesign (BirdTally pattern, fresh-greens palette) ===== */
+:root{--bar-h:64px;--shadow:0 2px 6px rgba(27,67,50,.07),0 10px 26px rgba(27,67,50,.07)}
+body{padding-bottom:calc(var(--bar-h) + env(safe-area-inset-bottom) + 16px)}
+header.app{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--deep),var(--green) 62%,var(--green2));box-shadow:0 2px 12px rgba(27,67,50,.35);padding:12px 14px}
+header.app .mark{flex:0 0 auto;width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,var(--amber2),var(--amber));display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 3px 8px rgba(0,0,0,.25)}
+header.app .brand{font-size:24px;line-height:1.1}
+header.app .tag{margin-top:1px}
+/* Bottom tab bar. The bar is runtime-built (buildTabs) with emoji-prefixed
+   text labels, so icons + visible labels are supplied by generated content
+   keyed to each button's data-tab target; the built-in text stays in the
+   DOM for assistive tech. */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:60;background:rgba(255,255,255,.97);border-top:1px solid var(--line);box-shadow:0 -3px 16px rgba(27,67,50,.14);padding:6px 8px calc(6px + env(safe-area-inset-bottom));overflow-x:visible;gap:2px;justify-content:center}
+nav.tabs button{flex:1 1 0;max-width:130px;min-height:56px;background:none;color:var(--muted);border-radius:14px;padding:4px 1px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:0;font-weight:700}
+nav.tabs button::before{font-size:21px;line-height:1.15;padding:3px 14px;border-radius:999px;transition:background .15s}
+nav.tabs button::after{font-size:11.5px;letter-spacing:.1px}
+nav.tabs button.active{background:none;color:var(--deep)}
+nav.tabs button.active::before{background:var(--amber);box-shadow:0 2px 6px rgba(232,161,58,.5)}
+nav.tabs button[data-tab="today"]::before{content:"🌞"}
+nav.tabs button[data-tab="today"]::after{content:"Today"}
+nav.tabs button[data-tab="trays"]::before{content:"🌱"}
+nav.tabs button[data-tab="trays"]::after{content:"Trays"}
+nav.tabs button[data-tab="sales"]::before{content:"🧺"}
+nav.tabs button[data-tab="sales"]::after{content:"Sales"}
+nav.tabs button[data-tab="money"]::before{content:"💵"}
+nav.tabs button[data-tab="money"]::after{content:"Money"}
+nav.tabs button[data-tab="more"]::before{content:"☰"}
+nav.tabs button[data-tab="more"]::after{content:"More"}
+#view>*{animation:mmTabIn .28s ease both}
+@keyframes mmTabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.card,.stat{border-radius:16px;box-shadow:var(--shadow)}
+button.btn{border-radius:999px;min-height:48px}
+button.btn.small{min-height:44px}
+input,select,textarea{border-radius:12px}
+.pill{border-radius:999px}
+.tray-actions button{border-radius:999px;min-height:44px;padding:6px 12px}
+.del{min-width:44px;min-height:44px}
+.sup-chip{border-radius:999px;min-height:48px}
+.sheet{border-radius:22px 22px 0 0}
+#toast{bottom:calc(var(--bar-h) + env(safe-area-inset-bottom) + 14px)}
+.gicon{font-size:66px;text-align:center;line-height:1.1}
+.gwelcome{text-align:center;color:#5a6572;margin:0 0 4px;font-size:15px;line-height:1.45}
+body .ww-legal-card{border-radius:22px;padding:26px 20px 22px}
+body .ww-legal-card h2{text-align:center;font-size:27px;font-weight:800;margin:2px 0}
+body .ww-legal-card h3{text-align:center}
+body .ww-legal-btn{border-radius:999px}
+body .ww-legal-agree{min-height:56px;font-size:17px;background:linear-gradient(145deg,var(--green2),var(--green));border-color:var(--green)}
+body .ww-legal-close{border-radius:999px}
+body .ww-legal-open-btn{border-radius:999px}
+@media print{body{padding-bottom:0}}
 </style>
 </head>
 <body>
 <header class="app">
-  <div class="brand">🌱 Microgreens <span class="sprout">Manager</span></div>
-  <div class="tag">Sow it, grow it, sell it — trays, harvests, customers &amp; money in one place</div>
+  <div class="mark" aria-hidden="true">🌱</div>
+  <div class="htext">
+    <div class="brand">Microgreens <span class="sprout">Manager</span></div>
+    <div class="tag">Sow it, grow it, sell it — trays, harvests, customers &amp; money in one place</div>
+  </div>
 </header>
 <nav class="tabs" id="tabbar"></nav>
 <main id="view"></main>
@@ -150,11 +202,13 @@ a.sup-buy:hover{background:var(--soft);}
 </div>
 
 <div id="toast"></div>
-<footer class="app">Microgreens Manager v1.2 · Runs 100% offline. Your data never leaves this device — it lives in your browser's storage.</footer>
+<footer class="app">Microgreens Manager v1.4.0 · Runs 100% offline. Your data never leaves this device — it lives in your browser's storage.</footer>
 
 <div id="wwLegalOverlay" class="ww-legal-overlay" hidden>
   <div class="ww-legal-card" role="dialog" aria-modal="true" aria-labelledby="wwLegalTitle">
+    <div class="gicon" aria-hidden="true">🌱</div>
     <h2>Microgreens Manager</h2>
+    <p class="gwelcome">Welcome! Sow it, grow it, sell it — trays, harvests, customers and money, all tracked right here on this device.</p>
     <h3 id="wwLegalTitle" style="margin-top:2px">Terms of Use</h3>
     <div class="ww-legal-sum">
       <p>Your data stays on your device.</p>
@@ -177,12 +231,12 @@ a.sup-buy:hover{background:var(--soft);}
 <script>
 'use strict';
 /* ================================================================
-   Microgreens Manager v1.1 — grow & sell tracker for small
+   Microgreens Manager v1.4 — grow & sell tracker for small
    microgreens growers. Single-file app. All data in localStorage
    under one key (microgreens_v1). Offline; no accounts, no server.
    ================================================================ */
 var APP_NAME = 'Microgreens Manager';
-var APP_VERSION = '1.3.1';
+var APP_VERSION = '1.4.0';
 var TERMS_VERSION = '1.0';
 var LS_KEY = 'microgreens_v1';
 var LS_TERMS_KEY = 'microgreens_v1_terms';
